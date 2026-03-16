@@ -58,9 +58,13 @@ export function AIAssistant() {
       setMessages(prev => [...prev, { role: "assistant", content: aiContent }])
     } catch (error: any) {
       console.error("Chat Error:", error)
+      const isKeyError = error.message?.includes("401") || error.message?.includes("User not found")
+      
       setMessages(prev => [...prev, { 
         role: "assistant", 
-        content: `⚠️ Assistant sync error: ${error.message}. Please check your connection or API configuration.` 
+        content: isKeyError 
+          ? `⚠️ Assistant setup error: Your OpenRouter API Key is invalid or not found (Error 401). \n\nFIX: Please update the OPENROUTER_API_KEY in your .env.local file with a fresh key from openrouter.ai.`
+          : `⚠️ Assistant sync error: ${error.message}. Please check your connection or API configuration.` 
       }])
     } finally {
       setIsLoading(false)

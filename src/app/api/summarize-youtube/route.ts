@@ -90,7 +90,6 @@ export async function POST(req: Request) {
       }
 
       // --- ROBUST FALLBACK (FIRECRAWL DEEP SCRAPE) ---
-      // Crucial for Metadata-Only Inference
       if (!transcriptText || transcriptText.length < 50) {
         const firecrawlKey = process.env.FIRECRAWL_API_KEY;
         if (firecrawlKey) {
@@ -107,8 +106,8 @@ export async function POST(req: Request) {
             });
 
             if (firecrawlRes.ok) {
-              const fcData = await firecrawlRes.json();
-              if (fcData.success && fcData.data) {
+              const fcData = await firecrawlRes.ok ? await firecrawlRes.json() : null;
+              if (fcData && fcData.success && fcData.data) {
                 const content = fcData.data.markdown || "";
                 const title = fcData.data.metadata?.title || "";
                 const description = fcData.data.metadata?.description || "";
@@ -122,12 +121,40 @@ export async function POST(req: Request) {
           } catch (fcErr) {}
         }
       }
+
+      // --- CRITICAL FALLBACK (OEmbed & Raw Scrape) ---
+      // If Firecrawl fails, we try a direct OEmbed fetch which is very reliable for public videos
+      if (!transcriptText || transcriptText.length < 20) {
+        try {
+          console.log(`[YT API] Final Attempt: OEmbed Fetch for: ${videoId}`);
+          const oembedRes = await fetch(`https://www.youtube.com/oembed?url=https://www.youtube.com/watch?v=${videoId}&format=json`);
+          if (oembedRes.ok) {
+            const oembedData = await oembedRes.json();
+            const title = oembedData.title || "";
+            const author = oembedData.author_name || "";
+            if (title) {
+              transcriptText = `UNIVERSAL METADATA INFERENCE (Public Metadata Only):\n\nVideo Title: ${title}\nCreator: ${author}\n\nNOTE: The AI will reconstruct the video's core message based on these public attributes.`;
+              console.log("[YT API] OEmbed metadata retrieved. Proceeding with Inference.");
+            }
+          } else {
+             // Absolute last resort: Scrape raw HTML for <title>
+             const rawRes = await fetch(`https://www.youtube.com/watch?v=${videoId}`);
+             const html = await rawRes.text();
+             const titleMatch = html.match(/<title>(.*?)<\/title>/);
+             if (titleMatch && titleMatch[1]) {
+               const title = titleMatch[1].replace('- YouTube', '').trim();
+               transcriptText = `UNIVERSAL METADATA INFERENCE (Raw Title Scrape):\n\nVideo Title: ${title}\n\nNOTE: The AI will attempt to provide insights based on the title and its general knowledge of this topic.`;
+               console.log("[YT API] Raw title scrape successful.");
+             }
+          }
+        } catch (err) {}
+      }
     }
 
-    // Final check for content - relaxed character limit (metadata is shorter but valid)
+    // Final check for content - Extremely relaxed. If we have a title, we try.
     if (!transcriptText || transcriptText.length < 5) {
       return NextResponse.json({ 
-        error: "Privacy Lock Detected: This video is private or restricted. \n\nFIX: If you have access, click 'Manual Mode' and paste the transcript manually." 
+        error: "Access Blocked: This video is truly private or requires login. \n\nFIX: Open the video on YouTube, click '... More' -> 'Show Transcript', and use 'Manual Mode' to paste it here." 
       }, { status: 400 });
     }
 
