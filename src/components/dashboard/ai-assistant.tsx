@@ -37,29 +37,24 @@ export function AIAssistant() {
     setIsLoading(true)
 
     try {
-      const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+      const response = await fetch("/api/chat", {
         method: "POST",
-        headers: {
-          "Authorization": `Bearer ${process.env.NEXT_PUBLIC_OPENROUTER_API_KEY || "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"}`,
-          "Content-Type": "application/json",
-          "HTTP-Referer": "https://ai-productivity-hub.vercel.app",
-          "X-Title": "AI Productivity Hub"
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          model: "google/gemini-flash-1.5:free",
           messages: [
-            { role: "system", content: "You are a helpful assistant for an AI Productivity Hub. You help users with YouTube summaries, resume building, and taking notes. Be concise and friendly." },
-            ...messages,
+            ...messages.map(m => ({ role: m.role, content: m.content })),
             { role: "user", content: userMsg }
           ]
         })
       })
 
+      if (!response.ok) throw new Error("API failure")
+
       const data = await response.json()
       const aiContent = data.choices?.[0]?.message?.content || "I'm sorry, I'm having trouble connecting right now."
       setMessages(prev => [...prev, { role: "assistant", content: aiContent }])
     } catch (error) {
-      setMessages(prev => [...prev, { role: "assistant", content: "Error connecting to AI service." }])
+      setMessages(prev => [...prev, { role: "assistant", content: "Error connecting to AI service. Please try again later." }])
     } finally {
       setIsLoading(false)
     }

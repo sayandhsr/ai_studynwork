@@ -30,25 +30,35 @@ export async function POST(req: Request) {
     if (!transcriptText && videoId) {
       const rapidApiKey = process.env.RAPIDAPI_KEY;
       if (rapidApiKey) {
+        // Fallback 1: youtube-transcript3
         try {
-          console.log(`[YT API] Fetching transcript via RapidAPI for: ${videoId}`);
+          console.log(`[YT API] Attempt 1: Fetching transcript via youtube-transcript3 for: ${videoId}`);
           const rapidApiRes = await fetch(`https://youtube-transcript3.p.rapidapi.com/api/transcript-with-timestamps?video_id=${videoId}`, {
-            method: "GET",
-            headers: {
-              "x-rapidapi-key": rapidApiKey,
-              "x-rapidapi-host": "youtube-transcript3.p.rapidapi.com"
-            }
+            headers: { "x-rapidapi-key": rapidApiKey, "x-rapidapi-host": "youtube-transcript3.p.rapidapi.com" }
           });
 
           if (rapidApiRes.ok) {
             const rapidData = await rapidApiRes.json();
             if (rapidData.transcript && Array.isArray(rapidData.transcript)) {
               transcriptText = rapidData.transcript.map((s: any) => s.text).join(" ");
-              console.log(`[YT API] RapidAPI success! Fetched ${transcriptText.length} chars.`);
             }
           }
-        } catch (err: any) {
-          console.error("[YT API] RapidAPI connection error:", err.message);
+        } catch (err) {}
+
+        // Fallback 2: subtitles-for-youtube (different provider)
+        if (!transcriptText) {
+          try {
+            console.log(`[YT API] Attempt 2: Fetching via subtitles-for-youtube for: ${videoId}`);
+            const subRes = await fetch(`https://subtitles-for-youtube.p.rapidapi.com/subtitles/${videoId}`, {
+              headers: { "x-rapidapi-key": rapidApiKey, "x-rapidapi-host": "subtitles-for-youtube.p.rapidapi.com" }
+            });
+            if (subRes.ok) {
+              const subData = await subRes.json();
+              if (subData.subtitles && Array.isArray(subData.subtitles)) {
+                transcriptText = subData.subtitles.map((s: any) => s.text).join(" ");
+              }
+            }
+          } catch (err) {}
         }
       }
 
@@ -56,17 +66,15 @@ export async function POST(req: Request) {
       if (!transcriptText || transcriptText.length < 50) {
         const firecrawlKey = process.env.FIRECRAWL_API_KEY;
         if (firecrawlKey) {
-          console.log(`[YT API] Transcript unavailable. Deep-scraping via Firecrawl for: ${videoId}`);
+          console.log(`[YT API] Transcript unavailable. Final attempt via Firecrawl Deep-Scrape for: ${videoId}`);
           try {
             const firecrawlRes = await fetch("https://api.firecrawl.dev/v1/scrape", {
               method: "POST",
-              headers: {
-                "Authorization": `Bearer ${firecrawlKey}`,
-                "Content-Type": "application/json"
-              },
+              headers: { "Authorization": `Bearer ${firecrawlKey}`, "Content-Type": "application/json" },
               body: JSON.stringify({
                 url: `https://www.youtube.com/watch?v=${videoId}`,
-                formats: ["markdown", "metadata"]
+                formats: ["markdown", "metadata"],
+                waitFor: 2000 // Give time for dynamic elements to load
               })
             });
 
@@ -74,16 +82,16 @@ export async function POST(req: Request) {
               const fcData = await firecrawlRes.json();
               if (fcData.success && fcData.data) {
                 const content = fcData.data.markdown || "";
-                const title = fcData.data.metadata?.title || "Unknown Video";
+                const title = fcData.data.metadata?.title || "";
                 const description = fcData.data.metadata?.description || "";
                 
-                transcriptText = `DEEP SCRAPE CONTEXT (TRANSCRIPT UNAVAILABLE):\nTitle: ${title}\nDescription: ${description}\n\nPage Content:\n${content.substring(0, 5000)}`;
-                console.log(`[YT API] Firecrawl success! Fetched ${transcriptText.length} chars.`);
+                // Even if we only get metadata, it's better than nothing
+                if (title || description) {
+                   transcriptText = `VIDEO METADATA & CONTENT:\nTitle: ${title}\nDescription: ${description}\n\nPage Content Summary:\n${content.substring(0, 5000)}`;
+                }
               }
             }
-          } catch (fcErr: any) {
-            console.error("[YT API] Firecrawl connection failed:", fcErr.message);
-          }
+          } catch (fcErr) {}
         }
       }
     }
@@ -91,7 +99,7 @@ export async function POST(req: Request) {
     // Final check for content
     if (!transcriptText || transcriptText.length < 20) {
       return NextResponse.json({ 
-        error: "We couldn't fetch the video content automatically (it might be private or restricted). Please use 'Manual Mode' and paste the transcript or description for a better summary." 
+        error: "Automatic fetching failed. This video might be private, restricted, or have disabled captions. Please click 'Manual Mode' above and paste the transcript (found under 'Show Transcript' on YouTube) to get your summary." 
       }, { status: 400 });
     }
 
