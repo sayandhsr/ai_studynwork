@@ -58,14 +58,15 @@ export function AppSidebar() {
 
   return (
     <Sidebar variant="inset" collapsible="icon">
-      <SidebarHeader className="flex h-16 items-center border-b px-4">
-        <div className="flex items-center gap-2 font-bold text-lg">
-          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary text-primary-foreground">
-            <span className="font-bold">AI</span>
+      <SidebarHeader className="flex h-16 items-center border-b border-border/50 px-4 bg-background">
+        <div className="flex items-center gap-3 font-semibold">
+          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10 overflow-hidden border border-primary/20">
+            <img src="/images/human_logo.png" alt="Logo" className="w-6 h-6 object-contain" />
           </div>
-          <span className="group-data-[collapsible=icon]:hidden">
-            Productivity
-          </span>
+          <div className="flex flex-col group-data-[collapsible=icon]:hidden">
+            <span className="text-[10px] font-bold tracking-[0.2em] uppercase opacity-60">Study Sanctuary</span>
+            <span className="text-sm font-heading tracking-tight italic">Productivity Hub</span>
+          </div>
         </div>
       </SidebarHeader>
       <SidebarContent>

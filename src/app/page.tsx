@@ -4,8 +4,8 @@ import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
 import { motion } from "framer-motion";
 import { useState } from "react";
-import { Loader2, Youtube, StickyNote, Sparkles, ArrowRight } from "lucide-react";
-import Image from "next/image";
+import { Loader2, ArrowRight } from "lucide-react";
+import { ThemeToggle } from "@/components/theme-toggle";
 
 export default function LandingPage() {
   const [loading, setLoading] = useState(false);
@@ -29,152 +29,174 @@ export default function LandingPage() {
   const fadeInUp = {
     initial: { opacity: 0, y: 20 },
     animate: { opacity: 1, y: 0 },
-    transition: { duration: 0.6 }
+    transition: { duration: 0.8 }
   };
 
   return (
-    <div className="min-h-screen bg-[#FDFBF7] text-[#2D2A26] overflow-x-hidden font-serif">
+    <div className="min-h-screen bg-background text-foreground overflow-x-hidden font-serif selection:bg-primary/20">
       {/* Navigation */}
-      <nav className="flex items-center justify-between px-8 py-6 max-w-7xl mx-auto border-b border-[#E8E2D9]">
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 relative">
-            <img src="/images/human_logo.png" alt="Hub Logo" className="w-full h-full object-contain" />
+      <nav className="flex items-center justify-between px-8 py-8 max-w-7xl mx-auto border-b border-border/50">
+        <div className="flex items-center gap-4">
+          <div className="w-12 h-12 relative group">
+            <div className="absolute inset-0 bg-primary/20 blur-xl group-hover:bg-primary/40 transition-all rounded-full" />
+            <img src="/images/human_logo.png" alt="Hub Logo" className="w-full h-full object-contain relative transition-transform duration-700 group-hover:rotate-12" />
           </div>
-          <span className="text-xl font-semibold tracking-tight uppercase">AI Productivity Hub</span>
+          <div className="flex flex-col">
+            <span className="text-sm font-bold tracking-[0.3em] uppercase opacity-80">AI Productivity</span>
+            <span className="text-xl font-heading tracking-tight italic">Hub & Sanctuary</span>
+          </div>
         </div>
-        <Button 
-          variant="outline" 
-          className="rounded-xl px-6 border-[#D6CFC7] hover:bg-[#F5F1EB] transition-all text-[#2D2A26]"
-          onClick={handleGoogleLogin}
-        >
-          Sign In
-        </Button>
+        <div className="flex items-center gap-6">
+          <ThemeToggle />
+          <Button 
+            variant="ghost" 
+            className="rounded-none px-8 py-6 border-b border-transparent hover:border-primary hover:bg-transparent transition-all uppercase tracking-widest text-xs font-bold"
+            onClick={handleGoogleLogin}
+          >
+            My Account
+          </Button>
+        </div>
       </nav>
 
-      {/* Hero Section */}
-      <section className="max-w-7xl mx-auto px-8 py-12 md:py-24 flex flex-col lg:flex-row items-center gap-16">
+      {/* Hero Section - Centered & Symmetrical */}
+      <section className="max-w-5xl mx-auto px-8 pt-24 pb-32 text-center space-y-12">
         <motion.div 
-          className="flex-1 space-y-10"
+          className="space-y-12"
           initial="initial"
           animate="animate"
           variants={fadeInUp}
         >
-          <div className="inline-flex items-center gap-2 bg-[#F5F1EB] px-5 py-2 rounded-xl text-xs font-bold tracking-widest uppercase border border-[#E8E2D9]">
-            <span className="flex h-2 w-2 rounded-full bg-[#8B7E6F]" />
-            Human-Crafted Experience
+          <div className="flex justify-center mb-4">
+             <div className="h-px w-24 bg-primary/30 my-auto" />
+             <span className="mx-6 text-[10px] font-bold tracking-[0.4em] uppercase opacity-60">The Latest Collection</span>
+             <div className="h-px w-24 bg-primary/30 my-auto" />
           </div>
-          <h1 className="text-6xl md:text-8xl font-black leading-[0.9] tracking-tighter text-[#2D2A26]">
-            Elegant <span className="italic font-light">Wisdom</span>.
+          
+          <h1 className="text-7xl md:text-9xl font-heading tracking-tighter leading-[0.8] text-balance">
+            Capture <br />
+            <span className="italic font-light opacity-80">Silent Wisdom.</span>
           </h1>
-          <p className="text-2xl text-[#5E5851] max-w-xl leading-relaxed font-light">
-            Capture your thoughts with the precision of AI and the warmth of a classic journal. Transform tutorials into your personal library.
-          </p>
-          <div className="flex flex-col sm:flex-row gap-6 pt-6">
-            <Button 
-              size="lg" 
-              className="h-16 px-12 rounded-xl text-lg font-bold bg-[#2D2A26] hover:bg-[#403C37] text-white shadow-2xl transition-all"
-              onClick={handleGoogleLogin}
-              disabled={loading}
-            >
-              {loading ? <Loader2 className="animate-spin" /> : <>Enter the Hub</>}
-            </Button>
-            <Button size="lg" variant="ghost" className="h-16 px-8 text-lg font-medium hover:bg-[#F5F1EB] group border border-transparent hover:border-[#E8E2D9]">
-              The Philosophy <ArrowRight className="w-5 h-5 ml-2 group-hover:translate-x-1 transition-transform" />
-            </Button>
+          
+          <div className="max-w-2xl mx-auto space-y-8">
+            <p className="text-2xl text-foreground/70 leading-relaxed font-light italic">
+              "Technology should serve the human soul, not replace it."
+            </p>
+            <div className="flex justify-center gap-8 pt-4">
+              <Button 
+                size="lg" 
+                className="h-16 px-16 rounded-none text-xs font-bold uppercase tracking-[0.2em] bg-primary hover:bg-primary/90 text-primary-foreground transition-all duration-500 border border-primary"
+                onClick={handleGoogleLogin}
+                disabled={loading}
+              >
+                {loading ? <Loader2 className="animate-spin" /> : "Enter the Sanctuary"}
+              </Button>
+            </div>
           </div>
         </motion.div>
 
         <motion.div 
-          className="flex-1 relative"
-          initial={{ opacity: 0, x: 20 }}
-          animate={{ opacity: 1, x: 0 }}
-          transition={{ duration: 1, delay: 0.2 }}
+          className="relative mt-24"
+          initial={{ opacity: 0, scale: 0.95 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{ duration: 1.5, delay: 0.4 }}
         >
-          <div className="relative overflow-hidden rounded-2xl border-[12px] border-white shadow-[0_32px_64px_-16px_rgba(0,0,0,0.1)]">
+          <div className="absolute -inset-20 bg-primary/5 blur-[120px] rounded-full pointer-events-none" />
+          <div className="relative overflow-hidden border border-border/40 shadow-[0_48px_100px_-24px_rgba(0,0,0,0.3)]">
             <img 
               src="/images/human_hero.png" 
-              alt="Classic Workspace" 
-              className="w-full h-auto grayscale-[0.2] hover:grayscale-0 transition-all duration-1000"
+              alt="Luxury Workspace" 
+              className="w-full h-auto grayscale-[0.4] hover:grayscale-0 transition-all duration-[3000ms] ease-out scale-105 hover:scale-100"
             />
           </div>
         </motion.div>
       </section>
 
-      {/* Features Grid */}
-      <section className="bg-[#F5F1EB] py-32 border-y border-[#E8E2D9]">
+      {/* Features Grid - Centered Harmony */}
+      <section className="bg-secondary/30 py-40 border-y border-border/20">
         <div className="max-w-7xl mx-auto px-8">
-          <div className="text-center mb-24 space-y-6">
-            <h2 className="text-5xl font-black tracking-tighter">Crafted for the Deep Learner.</h2>
-            <p className="text-[#5E5851] text-xl max-w-2xl mx-auto font-light">Minimalist tools designed to disappear so you can focus on what truly matters.</p>
+          <div className="text-center mb-32 space-y-8">
+            <h2 className="text-sm font-bold tracking-[0.5em] uppercase opacity-50">Our Capabilities</h2>
+            <h3 className="text-5xl md:text-6xl font-heading tracking-tight">Crafted for the human mind.</h3>
           </div>
 
-          <div className="grid md:grid-cols-2 gap-12">
+          <div className="grid lg:grid-cols-2 gap-24">
             {/* Feature 1 */}
             <motion.div 
-              className="group p-10 rounded-2xl bg-[#FDFBF7] border border-[#E8E2D9] shadow-sm hover:shadow-2xl transition-all duration-700"
-              whileHover={{ y: -10 }}
+              className="space-y-12 text-center lg:text-left group"
+              whileInView={{ opacity: 1, y: 0 }}
+              initial={{ opacity: 0, y: 40 }}
+              viewport={{ once: true }}
             >
-              <div className="w-full aspect-[4/3] rounded-xl overflow-hidden mb-10 border border-[#E8E2D9]">
-                <img src="/images/human_yt.png" alt="YouTube Insights" className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-[2000ms]" />
+              <div className="relative aspect-[4/5] overflow-hidden border border-border/40 hover:shadow-2xl transition-all duration-1000">
+                <img src="/images/human_yt.png" alt="Visual Scribe" className="w-full h-full object-cover grayscale-[0.3] group-hover:grayscale-0 transition-all duration-[2000ms]" />
+                <div className="absolute inset-0 bg-background/20 group-hover:bg-transparent transition-colors duration-1000" />
               </div>
-              <div className="space-y-4">
-                <h3 className="text-3xl font-black tracking-tighter uppercase">Visual Scribe</h3>
-                <p className="text-[#5E5851] text-xl leading-relaxed font-light">
+              <div className="space-y-6 px-4">
+                <h4 className="text-4xl font-heading tracking-tight italic">Visual Scribe</h4>
+                <div className="h-px w-12 bg-primary/40 mx-auto lg:mx-0" />
+                <p className="text-xl text-foreground/70 leading-relaxed font-light">
                   Convert complex lectures into structured chapters. DeepSeek extracts the essence while you focus on the flow.
                 </p>
-                <div className="pt-6">
-                  <Button variant="link" className="p-0 text-xl font-bold text-[#2D2A26] decoration-2 underline-offset-8">
-                    Open Reader <ArrowRight className="ml-2 w-5 h-5 inline" />
-                  </Button>
-                </div>
+                <Button variant="link" className="p-0 text-xs font-bold uppercase tracking-widest text-primary border-b border-primary/20 hover:border-primary transition-all">
+                  See all features
+                </Button>
               </div>
             </motion.div>
 
             {/* Feature 2 */}
             <motion.div 
-              className="group p-10 rounded-2xl bg-[#FDFBF7] border border-[#E8E2D9] shadow-sm hover:shadow-2xl transition-all duration-700"
-              whileHover={{ y: -10 }}
+              className="space-y-12 text-center lg:text-left group pt-24 lg:pt-48"
+              whileInView={{ opacity: 1, y: 0 }}
+              initial={{ opacity: 0, y: 40 }}
+              viewport={{ once: true }}
             >
-              <div className="w-full aspect-[4/3] rounded-xl overflow-hidden mb-10 border border-[#E8E2D9] bg-[#2D2A26] flex items-center justify-center">
-                 <img src="/images/human_hero.png" alt="Notes" className="w-full h-full object-cover opacity-80 group-hover:opacity-100 transition-opacity" />
+              <div className="relative aspect-[4/5] overflow-hidden border border-border/40 hover:shadow-2xl transition-all duration-1000">
+                 <img src="/images/human_hero.png" alt="Knowledge Vault" className="w-full h-full object-cover grayscale-[0.3] group-hover:grayscale-0 transition-all duration-[2000ms] rotate-1" />
+                 <div className="absolute inset-0 bg-background/20 group-hover:bg-transparent transition-colors duration-1000" />
               </div>
-              <div className="space-y-4">
-                <h3 className="text-3xl font-black tracking-tighter uppercase">Knowledge Vault</h3>
-                <p className="text-[#5E5851] text-xl leading-relaxed font-light">
+              <div className="space-y-6 px-4">
+                <h4 className="text-4xl font-heading tracking-tight italic">Knowledge Vault</h4>
+                <div className="h-px w-12 bg-primary/40 mx-auto lg:mx-0" />
+                <p className="text-xl text-foreground/70 leading-relaxed font-light">
                   A sanctuary for your observations. Organized, searchable, and infinitely expandable with AI-assisted refinement.
                 </p>
-                <div className="pt-6">
-                  <Button variant="link" className="p-0 text-xl font-bold text-[#2D2A26] decoration-2 underline-offset-8">
-                    Access Library <ArrowRight className="ml-2 w-5 h-5 inline" />
-                  </Button>
-                </div>
+                <Button variant="link" className="p-0 text-xs font-bold uppercase tracking-widest text-primary border-b border-primary/20 hover:border-primary transition-all">
+                  Access Sanctuary
+                </Button>
               </div>
             </motion.div>
           </div>
         </div>
       </section>
 
-      {/* Footer */}
-      <footer className="max-w-7xl mx-auto px-8 py-20 text-[#5E5851]">
-        <div className="flex flex-col md:flex-row justify-between items-center gap-10">
-          <div className="flex items-center gap-3">
-             <img src="/images/human_logo.png" alt="Logo" className="w-8 h-8 opacity-60" />
-             <span className="font-bold tracking-widest uppercase text-sm">AI Productivity Hub</span>
-          </div>
-          <div className="flex gap-12 text-sm uppercase font-bold tracking-widest">
-            <a href="#" className="hover:text-[#2D2A26] transition-colors">Journal</a>
-            <a href="#" className="hover:text-[#2D2A26] transition-colors">Manifesto</a>
-            <a href="#" className="hover:text-[#2D2A26] transition-colors">Account</a>
-          </div>
+      {/* Footer - Symmetrical Balance */}
+      <footer className="max-w-7xl mx-auto px-8 py-32 text-center space-y-20">
+        <div className="flex justify-center items-center gap-3 mb-10">
+           <div className="h-px w-32 bg-border/40" />
+           <img src="/images/human_logo.png" alt="Logo" className="w-12 h-12 grayscale opacity-40 hover:opacity-100 transition-all duration-700" />
+           <div className="h-px w-32 bg-border/40" />
         </div>
-        <div className="mt-16 pt-10 border-t border-[#E8E2D9] flex flex-col sm:flex-row justify-between items-center gap-6 text-xs uppercase tracking-widest font-bold opacity-60">
-          <span>&copy; 2026 Crafted in Silence. All rights reserved.</span>
-          <div className="flex gap-8">
-            <a href="#" className="hover:text-[#2D2A26]">Data Policy</a>
-            <a href="#" className="hover:text-[#2D2A26]">Ethical Code</a>
-          </div>
+        
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-12 text-xs font-bold tracking-[0.3em] uppercase opacity-60">
+          <a href="#" className="hover:text-primary transition-colors">About Us</a>
+          <a href="#" className="hover:text-primary transition-colors">Our Offers</a>
+          <a href="#" className="hover:text-primary transition-colors">My Account</a>
+          <a href="#" className="hover:text-primary transition-colors">Philosophy</a>
+        </div>
+
+        <div className="pt-20 border-t border-border/20 text-[10px] tracking-[0.2em] uppercase opacity-40 font-bold">
+          <span>&copy; 2026 Crafted with Intent. No AI placeholders were used in this design.</span>
         </div>
       </footer>
+
+      <style jsx global>{`
+        .font-heading {
+          font-family: var(--font-heading), serif;
+        }
+        .font-serif {
+          font-family: var(--font-serif), serif;
+        }
+      `}</style>
     </div>
   );
 }
