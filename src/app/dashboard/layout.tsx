@@ -29,13 +29,17 @@ export default async function DashboardLayout({
 
   return (
     <SidebarProvider>
-      <div className="flex min-h-screen w-full bg-secondary/20 relative">
+      <div className="flex min-h-screen w-full bg-background relative selection:bg-primary/20">
         <AppSidebar />
         <div className="flex flex-1 flex-col overflow-hidden">
           <TopNav user={profile} />
-          <main className="flex-1 overflow-auto p-4 md:p-6 lg:p-8">
-            <div className="mx-auto max-w-6xl">
+          <main className="flex-1 overflow-auto p-4 md:p-8 lg:p-12 relative">
+            <div className="mx-auto max-w-7xl relative z-10">
               {children}
+            </div>
+            {/* Subtle luxury watermark/background element */}
+            <div className="absolute bottom-0 right-0 p-12 opacity-[0.02] pointer-events-none select-none">
+              <span className="font-heading italic text-[20vw] leading-none">Nest</span>
             </div>
           </main>
         </div>

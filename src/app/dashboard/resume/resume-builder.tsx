@@ -67,7 +67,7 @@ export function ResumeBuilder() {
     skills: "JavaScript, TypeScript, React, Next.js, Node.js, SQL, TailwindCSS, AWS, Docker"
   })
 
-  const [activeTemplate, setActiveTemplate] = useState("Clear")
+  const [activeTemplate, setActiveTemplate] = useState("Elegant")
   const [saving, setSaving] = useState(false)
   const resumeRef = useRef<HTMLDivElement>(null)
 
@@ -111,25 +111,24 @@ export function ResumeBuilder() {
       case 'Creative': return "font-sans text-[11pt] text-indigo-900 border-l-[8px] border-indigo-500 pl-8"
       case 'Executive': return "font-serif text-[12pt] text-black border-t-[12px] border-black pt-8"
       case 'Minimal': return "font-sans text-[10pt] text-gray-700 tracking-tight"
-      case 'Blueprint': return "font-mono text-[11pt] text-blue-900 bg-blue-50/20"
-      case 'Sunset': return "font-sans text-[11pt] text-orange-950 border-orange-200"
-      case 'Cyber': return "font-mono text-[11pt] text-emerald-900 border-emerald-200"
-      case 'Nature': return "font-sans text-[11pt] text-green-950 border-green-200"
-      case 'Futuristic': return "font-sans text-[11pt] text-zinc-900 uppercase tracking-widest"
+      case 'Elegant': return "font-serif text-[12pt] text-slate-900 tracking-wide"
+      case 'Signature': return "font-heading italic text-[12pt] text-stone-900"
       default: return "font-sans text-[11pt] text-black"
     }
   }
 
   const Header = () => {
-    const isCentered = !['Creative', 'Executive', 'Futuristic'].includes(activeTemplate)
+    const isCentered = !['Creative', 'Executive'].includes(activeTemplate)
     return (
-      <div className={`mb-8 ${isCentered ? 'text-center' : 'text-left'} ${['Executive', 'Modern'].includes(activeTemplate) ? 'border-b-2 pb-6' : ''}`}>
-        <h1 className={`text-4xl font-black mb-2 ${activeTemplate === 'Modern' ? 'text-primary' : activeTemplate === 'Creative' ? 'text-indigo-600' : 'text-black'}`}>
+      <div className={`mb-10 ${isCentered ? 'text-center' : 'text-left'} ${['Executive', 'Modern'].includes(activeTemplate) ? 'border-b-2 pb-8' : ''}`}>
+        <h1 className={`text-5xl font-heading italic mb-3 ${activeTemplate === 'Modern' ? 'text-primary' : activeTemplate === 'Creative' ? 'text-indigo-600' : 'text-black'}`}>
           {data.personalInfo.fullName}
         </h1>
-        <div className="flex flex-wrap gap-4 text-sm font-medium opacity-70">
+        <div className="flex flex-wrap items-center justify-center gap-6 text-[10px] font-bold uppercase tracking-[0.2em] opacity-40">
           <span>{data.personalInfo.email}</span>
+          <div className="h-1 w-1 rounded-full bg-primary/40" />
           <span>{data.personalInfo.phone}</span>
+          <div className="h-1 w-1 rounded-full bg-primary/40" />
           <span>{data.personalInfo.location}</span>
         </div>
       </div>
@@ -137,32 +136,35 @@ export function ResumeBuilder() {
   }
 
   const Section = ({ title, children }: { title: string, children: React.ReactNode }) => (
-    <div className={`mb-8 ${activeTemplate === 'Futuristic' ? 'border-l-4 border-black pl-4' : ''}`}>
-      <h2 className={`text-xs font-black uppercase tracking-[0.2em] mb-4 
-        ${['Modern', 'Clear', 'Compact'].includes(activeTemplate) ? 'text-primary border-b border-primary/20 pb-1' : 'text-gray-500'}`}>
-        {title}
-      </h2>
+    <div className="mb-10">
+      <div className="flex items-center gap-4 mb-6">
+        <h2 className="text-[10px] font-bold uppercase tracking-[0.4em] opacity-30 whitespace-nowrap">
+          {title}
+        </h2>
+        <div className="h-px w-full bg-border/20" />
+      </div>
       <div>{children}</div>
     </div>
   )
 
   return (
-    <div className="flex flex-col lg:flex-row gap-8 items-start">
+    <div className="flex flex-col lg:flex-row gap-12 items-start font-serif selection:bg-primary/20 pb-20">
       {/* Form Controls */}
-      <div className="w-full lg:w-[400px] shrink-0 space-y-6">
-        <div className="space-y-3">
-          <h3 className="text-sm font-bold flex items-center gap-2">
-            <LayoutTemplate className="w-4 h-4 text-primary" />
-            21 Premium Templates
-          </h3>
-          <ScrollArea className="h-[120px] w-full border rounded-xl bg-card p-2">
-            <div className="grid grid-cols-3 gap-2">
-               {TEMPLATES.map((tmpl) => (
+      <div className="w-full lg:w-[450px] shrink-0 space-y-8">
+        <div className="space-y-4">
+          <div className="flex items-center gap-3">
+            <div className="h-px w-6 bg-primary/40" />
+            <span className="text-[10px] font-bold tracking-[0.3em] uppercase opacity-60">Design selection</span>
+          </div>
+          <h3 className="text-2xl font-heading italic">Curated Templates</h3>
+          <ScrollArea className="h-[140px] w-full border-border/30 border rounded-none bg-card/50 p-4">
+            <div className="grid grid-cols-2 gap-3">
+               {TEMPLATES.slice(0, 10).map((tmpl) => (
                   <Button 
                     key={tmpl} 
-                    variant={activeTemplate === tmpl ? "default" : "outline"} 
+                    variant="ghost"
                     size="sm"
-                    className="text-[10px] h-8 truncate px-1"
+                    className={`text-[10px] font-bold uppercase tracking-widest h-10 rounded-none border transition-all ${activeTemplate === tmpl ? "bg-primary text-primary-foreground border-primary shadow-lg" : "border-border/30 hover:bg-primary/5"}`}
                     onClick={() => setActiveTemplate(tmpl)}
                   >
                     {tmpl}
@@ -172,119 +174,131 @@ export function ResumeBuilder() {
           </ScrollArea>
         </div>
 
-        <Card className="border-primary/10 shadow-sm overflow-hidden rounded-2xl">
-          <ScrollArea className="h-[500px]">
-            <CardContent className="p-6 space-y-6">
-              <div className="space-y-4">
-                <h3 className="font-bold text-sm text-primary uppercase tracking-widest">Personal Info</h3>
-                <Input 
-                  placeholder="Full Name" 
-                  value={data.personalInfo.fullName} 
-                  onChange={(e) => updatePersonalInfo("fullName", e.target.value)} 
-                  className="rounded-xl border-primary/5"
-                />
-                <Input 
-                  placeholder="Email" 
-                  value={data.personalInfo.email} 
-                  onChange={(e) => updatePersonalInfo("email", e.target.value)} 
-                  className="rounded-xl border-primary/5"
-                />
-                <Input 
-                  placeholder="Phone" 
-                  value={data.personalInfo.phone} 
-                  onChange={(e) => updatePersonalInfo("phone", e.target.value)} 
-                  className="rounded-xl border-primary/5"
-                />
-                <Input 
-                  placeholder="Location" 
-                  value={data.personalInfo.location} 
-                  onChange={(e) => updatePersonalInfo("location", e.target.value)} 
-                  className="rounded-xl border-primary/5"
-                />
-                <Textarea 
-                  placeholder="Professional Summary" 
-                  value={data.personalInfo.summary} 
-                  onChange={(e) => updatePersonalInfo("summary", e.target.value)} 
-                  rows={4}
-                  className="rounded-xl border-primary/5 resize-none"
-                />
+        <Card className="rounded-none border-border/40 border bg-card/50 shadow-2xl relative overflow-hidden">
+          <ScrollArea className="h-[600px]">
+            <CardContent className="p-10 space-y-10">
+              <div className="space-y-6">
+                <h3 className="text-[10px] font-bold text-primary uppercase tracking-[0.4em] opacity-60">Identity</h3>
+                <div className="space-y-4">
+                  <Input 
+                    placeholder="Full Name" 
+                    value={data.personalInfo.fullName} 
+                    onChange={(e) => updatePersonalInfo("fullName", e.target.value)} 
+                    className="h-14 rounded-none border-border/30 focus-visible:ring-primary/20 bg-background/50 italic font-light text-lg px-4"
+                  />
+                  <div className="grid grid-cols-2 gap-4">
+                    <Input 
+                      placeholder="Email" 
+                      value={data.personalInfo.email} 
+                      onChange={(e) => updatePersonalInfo("email", e.target.value)} 
+                      className="h-14 rounded-none border-border/30 focus-visible:ring-primary/20 bg-background/50 italic font-light text-base px-4"
+                    />
+                    <Input 
+                      placeholder="Phone" 
+                      value={data.personalInfo.phone} 
+                      onChange={(e) => updatePersonalInfo("phone", e.target.value)} 
+                      className="h-14 rounded-none border-border/30 focus-visible:ring-primary/20 bg-background/50 italic font-light text-base px-4"
+                    />
+                  </div>
+                  <Input 
+                    placeholder="Location" 
+                    value={data.personalInfo.location} 
+                    onChange={(e) => updatePersonalInfo("location", e.target.value)} 
+                    className="h-14 rounded-none border-border/30 focus-visible:ring-primary/20 bg-background/50 italic font-light text-base px-4"
+                  />
+                  <Textarea 
+                    placeholder="Brief Professional Narrative" 
+                    value={data.personalInfo.summary} 
+                    onChange={(e) => updatePersonalInfo("summary", e.target.value)} 
+                    rows={4}
+                    className="rounded-none border-border/30 focus-visible:ring-primary/20 bg-background/50 italic font-light text-base p-4 resize-none leading-relaxed"
+                  />
+                </div>
               </div>
 
-              <div className="space-y-4 pt-4 border-t border-primary/5">
-                <h3 className="font-bold text-sm text-primary uppercase tracking-widest">Skills</h3>
+              <div className="space-y-6 pt-6 border-t border-border/20">
+                <h3 className="text-[10px] font-bold text-primary uppercase tracking-[0.4em] opacity-60">Expertise</h3>
                 <Textarea 
-                  placeholder="e.g. React, Node.js, SQL..." 
+                  placeholder="e.g. ArtificiaI Intelligence, Strategic Leadership..." 
                   value={data.skills} 
                   onChange={(e) => setData(prev => ({...prev, skills: e.target.value}))} 
                   rows={3}
-                  className="rounded-xl border-primary/5 resize-none"
+                  className="rounded-none border-border/30 focus-visible:ring-primary/20 bg-background/50 italic font-light text-base p-4 resize-none leading-relaxed"
                 />
               </div>
             </CardContent>
           </ScrollArea>
         </Card>
 
-        <div className="flex flex-col gap-3">
-           <Button onClick={() => handlePrint()} className="w-full rounded-xl py-6 bg-secondary text-secondary-foreground hover:bg-secondary/80 font-bold tracking-tight shadow-lg shadow-secondary/20">
-              <Printer className="w-5 h-5 mr-3" />
-              Download High-Res PDF
+        <div className="flex flex-col gap-4">
+           <Button onClick={() => handlePrint()} className="h-16 rounded-none bg-primary hover:bg-primary/90 transition-all font-bold uppercase tracking-[0.3em] text-xs shadow-xl group">
+              <Printer className="w-5 h-5 mr-4 group-hover:scale-110 transition-transform" />
+              Obtain High-Res Document
            </Button>
-           <Button onClick={handleSave} disabled={saving} className="w-full rounded-xl py-6 font-bold tracking-tight shadow-lg shadow-primary/20">
-              {saving ? <Loader2 className="w-5 h-5 mr-3 animate-spin" /> : <Save className="w-5 h-5 mr-3" />}
-              Save Progress
+           <Button variant="ghost" onClick={handleSave} disabled={saving} className="h-14 rounded-none border border-primary/20 hover:bg-primary/10 transition-all font-bold uppercase tracking-[0.3em] text-[10px]">
+              {saving ? <Loader2 className="w-4 h-4 mr-3 animate-spin" /> : <Save className="w-4 h-4 mr-3" />}
+              Commit to Vault
            </Button>
         </div>
       </div>
 
       {/* Resume Preview */}
-      <div className="flex-1 bg-secondary/10 p-4 sm:p-12 rounded-[2rem] border-2 border-dashed border-primary/10 min-h-[1000px] flex justify-center sticky top-8">
+      <div className="flex-1 bg-muted/30 p-8 sm:p-16 rounded-none border border-border/30 min-h-[1100px] flex justify-center sticky top-12 shadow-inner overflow-auto">
          <div 
            ref={resumeRef}
-           className={`bg-white w-[210mm] min-h-[297mm] p-[25mm] shadow-2xl text-black print:shadow-none print:p-0 ring-1 ring-black/5 ${getTemplateStyles()}`}
+           className={`bg-white w-[210mm] min-h-[297mm] p-[30mm] shadow-2xl text-black print:shadow-none print:p-0 ring-1 ring-black/5 ${getTemplateStyles()} relative`}
          >
+            {/* Fine watermark for luxury templates */}
+            <div className="absolute top-8 right-8 text-[8px] font-bold uppercase tracking-[0.5em] opacity-10 select-none">
+              Sanctuary Curated
+            </div>
+
             <Header />
             
-            <Section title="Professional Summary">
-               <p className="leading-relaxed opacity-80">{data.personalInfo.summary}</p>
+            <Section title="Narrative">
+               <p className="leading-relaxed opacity-80 italic font-light text-lg">{data.personalInfo.summary}</p>
             </Section>
 
-            <Section title="Experience">
-               <div className="space-y-6">
+            <Section title="Chronicle">
+               <div className="space-y-10">
                  {data.experience.map((exp) => (
-                    <div key={exp.id} className="group">
-                       <div className="flex justify-between items-baseline mb-2">
-                          <h3 className="font-black text-lg group-hover:text-primary transition-colors">{exp.role}</h3>
-                          <span className="text-sm font-bold opacity-60 bg-secondary/30 px-2 py-0.5 rounded leading-none">{exp.period}</span>
+                    <div key={exp.id} className="group relative">
+                       <div className="flex justify-between items-baseline mb-3">
+                          <h3 className="font-heading text-2xl italic tracking-tight group-hover:text-primary transition-colors">{exp.role}</h3>
+                          <span className="text-[10px] font-bold uppercase tracking-widest opacity-40 italic">{exp.period}</span>
                        </div>
-                       <div className={`text-sm font-bold mb-3 ${activeTemplate === 'Creative' ? 'text-indigo-600' : 'text-gray-500'}`}>
+                       <div className="text-sm font-bold uppercase tracking-[0.2em] mb-4 text-primary/60">
                          {exp.company}
                        </div>
-                       <p className="text-sm leading-relaxed opacity-70">{exp.description}</p>
+                       <p className="text-base leading-relaxed font-light italic opacity-70 border-l border-primary/10 pl-6">{exp.description}</p>
                     </div>
                  ))}
                </div>
             </Section>
 
-             <Section title="Education">
-               <div className="space-y-4">
+             <Section title="Foundation">
+               <div className="space-y-8">
                  {data.education.map((edu) => (
                     <div key={edu.id} className="flex justify-between items-start">
-                       <div>
-                          <h3 className="font-black">{edu.degree}</h3>
-                           <div className="text-sm opacity-60 font-medium">{edu.school}</div>
+                       <div className="space-y-1">
+                          <h3 className="font-heading text-xl italic">{edu.degree}</h3>
+                           <div className="text-[11px] font-bold uppercase tracking-widest opacity-50">{edu.school}</div>
                        </div>
-                       <span className="text-sm font-bold opacity-40">{edu.year}</span>
+                       <span className="text-[10px] font-bold opacity-30 italic">{edu.year}</span>
                     </div>
                  ))}
                </div>
              </Section>
 
-             <Section title="Technical Expertise">
-                <div className="flex flex-wrap gap-2">
+             <Section title="Arsenal">
+                <div className="flex flex-wrap gap-x-8 gap-y-4">
                   {data.skills.split(',').map((skill, i) => (
-                    <span key={i} className="text-xs font-bold px-3 py-1 bg-secondary/20 rounded-full">
-                      {skill.trim()}
-                    </span>
+                    <div key={i} className="flex items-center gap-3">
+                      <div className="h-1 w-1 rounded-full bg-primary/40" />
+                      <span className="text-xs font-bold uppercase tracking-widest opacity-60">
+                        {skill.trim()}
+                      </span>
+                    </div>
                   ))}
                 </div>
              </Section>

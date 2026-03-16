@@ -124,33 +124,31 @@ export function AIAssistant() {
           >
             <Card className="flex flex-col h-[500px] border-primary/20 bg-background/80 backdrop-blur-xl shadow-2xl overflow-hidden rounded-2xl">
               {/* Header */}
-              <div className="p-4 bg-primary text-primary-foreground flex justify-between items-center bg-gradient-to-r from-primary to-primary/80">
-                <div className="flex items-center gap-2">
-                  <div className="bg-white/20 p-1.5 rounded-lg border border-white/30 backdrop-blur-sm">
-                    <Sparkles className="w-5 h-5 text-white" />
+              <div className="p-6 bg-card border-b border-border/40 flex justify-between items-center relative overflow-hidden">
+                <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-primary/10 via-primary to-primary/10" />
+                <div className="flex items-center gap-4 relative z-10">
+                  <div className="bg-primary/10 p-2 border border-primary/20 backdrop-blur-sm shadow-inner group">
+                    <Sparkles className="w-5 h-5 text-primary group-hover:rotate-12 transition-transform" />
                   </div>
-                  <div>
-                    <h3 className="font-semibold text-sm">Productivity Assistant</h3>
-                    <div className="flex items-center gap-1">
-                      <div className="w-1.5 h-1.5 bg-green-400 rounded-full animate-pulse" />
-                      <span className="text-[10px] opacity-80">AI Powered & ready</span>
-                    </div>
+                  <div className="flex flex-col">
+                    <span className="text-[9px] font-bold tracking-[0.3em] uppercase opacity-50">Sanctuary Guide</span>
+                    <h3 className="font-heading italic text-base tracking-tight leading-none">Workspace Oracle</h3>
                   </div>
                 </div>
-                <Button variant="ghost" size="icon" onClick={() => setIsOpen(false)} className="text-white hover:bg-white/20 rounded-full h-8 w-8">
+                <Button variant="ghost" size="icon" onClick={() => setIsOpen(false)} className="hover:bg-primary/10 rounded-none h-10 w-10 border border-transparent hover:border-border/30">
                   <X className="w-4 h-4" />
                 </Button>
               </div>
 
               {/* Chat Area */}
-              <ScrollArea className="flex-1 p-4" ref={scrollRef}>
-                <div className="space-y-4">
+              <ScrollArea className="flex-1 p-6 font-serif" ref={scrollRef}>
+                <div className="space-y-6 pb-4">
                   {messages.map((msg, i) => (
                     <div key={i} className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}>
-                      <div className={`max-w-[85%] p-3 rounded-2xl text-sm ${
+                      <div className={`max-w-[85%] p-4 text-base leading-relaxed italic font-light transition-all duration-500 rounded-none ${
                         msg.role === "user" 
-                        ? "bg-primary text-primary-foreground rounded-tr-none" 
-                        : "bg-muted text-muted-foreground rounded-tl-none border border-muted-foreground/10"
+                        ? "bg-primary/10 text-foreground border-r-2 border-primary shadow-sm" 
+                        : "bg-muted/30 text-foreground/80 border-l-2 border-border/50"
                       }`}>
                         {msg.content}
                       </div>
@@ -158,9 +156,9 @@ export function AIAssistant() {
                   ))}
                   {isLoading && (
                     <div className="flex justify-start">
-                      <div className="bg-muted p-3 rounded-2xl rounded-tl-none border border-muted-foreground/10 flex items-center gap-2">
-                        <Loader2 className="w-4 h-4 animate-spin" />
-                        <span className="text-xs italic">Thinking...</span>
+                      <div className="bg-muted/30 p-4 border-l-2 border-primary/30 flex items-center gap-3">
+                        <Loader2 className="w-3 h-3 animate-spin opacity-40 text-primary" />
+                        <span className="text-xs italic font-light tracking-[0.1em] opacity-40 uppercase">Channeling Wisdom...</span>
                       </div>
                     </div>
                   )}
@@ -168,18 +166,18 @@ export function AIAssistant() {
               </ScrollArea>
 
               {/* Input Area */}
-              <div className="p-4 border-t bg-muted/30">
+              <div className="p-6 border-t border-border/20 bg-muted/10">
                 <form 
                   onSubmit={(e) => { e.preventDefault(); handleSend(); }}
-                  className="flex gap-2"
+                  className="flex gap-4"
                 >
                   <Input 
                     value={input}
                     onChange={(e) => setInput(e.target.value)}
-                    placeholder="Ask me anything..."
-                    className="bg-background border-primary/10 rounded-xl"
+                    placeholder="Speak your mind..."
+                    className="bg-background/50 border-border/30 rounded-none h-12 italic font-light tracking-wide focus-visible:ring-primary/20"
                   />
-                  <Button type="submit" size="icon" disabled={isLoading} className="rounded-xl shrink-0">
+                  <Button type="submit" size="icon" disabled={isLoading} className="rounded-none shrink-0 h-12 w-12 bg-primary hover:bg-primary/90">
                     <Send className="w-4 h-4" />
                   </Button>
                 </form>
@@ -191,17 +189,21 @@ export function AIAssistant() {
 
       <Button
         onClick={() => setIsOpen(!isOpen)}
-        className="w-14 h-14 rounded-full shadow-xl bg-primary hover:bg-primary/90 p-0 border-4 border-white/10 group transition-all duration-300 active:scale-95"
+        className="w-16 h-16 rounded-none shadow-2xl bg-card hover:bg-primary/5 transition-all duration-500 border border-border/40 p-0 relative group overflow-hidden"
       >
+        <div className="absolute inset-0 bg-primary/20 transition-all duration-700 opacity-0 group-hover:opacity-10 scale-150 rotate-45 group-hover:rotate-0" />
         {isOpen ? (
-          <X className="w-6 h-6" />
+          <X className="w-6 h-6 text-primary relative z-10" />
         ) : (
-          <div className="relative">
-            <Sparkles className="w-6 h-6 absolute -top-1 -right-1 text-white animate-bounce" />
-            <Bot className="w-7 h-7" />
+          <div className="relative z-10">
+            <Sparkles className="w-5 h-5 absolute -top-4 -right-4 text-primary animate-pulse opacity-0 group-hover:opacity-100 transition-opacity" />
+            <Bot className="w-8 h-8 text-primary/80 group-hover:text-primary transition-colors" />
           </div>
         )}
       </Button>
+      <style jsx global>{`
+        .font-heading { font-family: var(--font-heading), serif; }
+      `}</style>
     </div>
   )
 }

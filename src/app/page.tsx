@@ -7,6 +7,8 @@ import { useState } from "react";
 import { Loader2, ArrowRight } from "lucide-react";
 import { ThemeToggle } from "@/components/theme-toggle";
 
+import { BirdLogo } from "@/components/bird-logo";
+
 export default function LandingPage() {
   const [loading, setLoading] = useState(false);
   const supabase = createClient();
@@ -33,62 +35,69 @@ export default function LandingPage() {
   };
 
   return (
-    <div className="min-h-screen bg-background text-foreground overflow-x-hidden font-serif selection:bg-primary/20">
+    <div className="min-h-screen bg-background text-foreground overflow-x-hidden font-serif selection:bg-primary/20 bg-black">
       {/* Navigation */}
-      <nav className="flex items-center justify-between px-8 py-8 max-w-7xl mx-auto border-b border-border/50">
+      <nav className="flex items-center justify-between px-6 md:px-12 py-8 max-w-7xl mx-auto border-b border-primary/10">
         <div className="flex items-center gap-4">
-          <div className="w-12 h-12 relative group">
+          <div className="w-10 h-10 md:w-12 md:h-12 relative group">
             <div className="absolute inset-0 bg-primary/20 blur-xl group-hover:bg-primary/40 transition-all rounded-full" />
-            <img src="/images/human_logo.png" alt="Hub Logo" className="w-full h-full object-contain relative transition-transform duration-700 group-hover:rotate-12" />
+            <BirdLogo className="w-full h-full text-primary relative transition-transform duration-700 group-hover:-rotate-12" />
           </div>
-          <div className="flex flex-col">
-            <span className="text-sm font-bold tracking-[0.3em] uppercase opacity-80">AI Productivity</span>
-            <span className="text-xl font-heading tracking-tight italic">Hub & Sanctuary</span>
+          <div className="flex flex-col leading-tight">
+            <span className="text-[10px] font-bold tracking-[0.3em] uppercase opacity-40 text-foreground">AI Productivity</span>
+            <span className="text-lg md:text-xl font-heading tracking-tight italic text-primary">Hub & Sanctuary</span>
           </div>
         </div>
-        <div className="flex items-center gap-6">
-          <ThemeToggle />
+        <div className="flex items-center gap-4 md:gap-8">
+          <div className="hidden sm:block">
+            <ThemeToggle />
+          </div>
           <Button 
             variant="ghost" 
-            className="rounded-none px-8 py-6 border-b border-transparent hover:border-primary hover:bg-transparent transition-all uppercase tracking-widest text-xs font-bold"
+            className="rounded-none px-4 md:px-8 py-6 border-b border-transparent hover:border-primary hover:bg-transparent transition-all uppercase tracking-widest text-[10px] font-bold text-foreground/60 hover:text-primary"
             onClick={handleGoogleLogin}
           >
-            My Account
+            Authenticate
           </Button>
         </div>
       </nav>
 
       {/* Hero Section - Centered & Symmetrical */}
-      <section className="max-w-5xl mx-auto px-8 pt-24 pb-32 text-center space-y-12">
+      <section className="max-w-5xl mx-auto px-6 pt-20 md:pt-32 pb-32 text-center space-y-16">
         <motion.div 
           className="space-y-12"
           initial="initial"
           animate="animate"
           variants={fadeInUp}
         >
-          <div className="flex justify-center mb-4">
-             <div className="h-px w-24 bg-primary/30 my-auto" />
-             <span className="mx-6 text-[10px] font-bold tracking-[0.4em] uppercase opacity-60">The Latest Collection</span>
-             <div className="h-px w-24 bg-primary/30 my-auto" />
+          <div className="flex justify-center items-center gap-4 mb-4">
+             <div className="h-px w-12 md:w-24 bg-primary/30" />
+             <span className="text-[10px] font-bold tracking-[0.4em] uppercase opacity-60">Curated for Excellence</span>
+             <div className="h-px w-12 md:w-24 bg-primary/30" />
           </div>
           
-          <h1 className="text-7xl md:text-9xl font-heading tracking-tighter leading-[0.8] text-balance">
-            Capture <br />
-            <span className="italic font-light opacity-80">Silent Wisdom.</span>
+          <h1 className="text-6xl md:text-9xl font-heading tracking-tighter leading-[0.9] text-balance">
+            Elevate <br />
+            <span className="italic font-light opacity-80 decoration-primary/20 underline-offset-8">Your Vantage.</span>
           </h1>
           
-          <div className="max-w-2xl mx-auto space-y-8">
-            <p className="text-2xl text-foreground/70 leading-relaxed font-light italic">
-              "Technology should serve the human soul, not replace it."
+          <div className="max-w-2xl mx-auto space-y-10">
+            <p className="text-xl md:text-2xl text-foreground/70 leading-relaxed font-light italic">
+              "In the quiet of the sanctuary, true productivity takes flight."
             </p>
-            <div className="flex justify-center gap-8 pt-4">
+            <div className="flex justify-center pt-4">
               <Button 
                 size="lg" 
-                className="h-16 px-16 rounded-none text-xs font-bold uppercase tracking-[0.2em] bg-primary hover:bg-primary/90 text-primary-foreground transition-all duration-500 border border-primary"
+                className="h-16 px-12 md:px-20 rounded-none text-[10px] font-bold uppercase tracking-[0.3em] bg-primary hover:bg-primary/90 text-primary-foreground transition-all duration-700 border border-primary shadow-2xl shadow-primary/20 group"
                 onClick={handleGoogleLogin}
                 disabled={loading}
               >
-                {loading ? <Loader2 className="animate-spin" /> : "Enter the Sanctuary"}
+                {loading ? <Loader2 className="animate-spin" /> : (
+                  <span className="flex items-center gap-3">
+                    Enter the Sanctuary
+                    <ArrowRight className="w-4 h-4 group-hover:translate-x-2 transition-transform" />
+                  </span>
+                )}
               </Button>
             </div>
           </div>
@@ -96,30 +105,32 @@ export default function LandingPage() {
 
         <motion.div 
           className="relative mt-24"
-          initial={{ opacity: 0, scale: 0.95 }}
-          animate={{ opacity: 1, scale: 1 }}
+          initial={{ opacity: 0, y: 40 }}
+          animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 1.5, delay: 0.4 }}
         >
           <div className="absolute -inset-20 bg-primary/5 blur-[120px] rounded-full pointer-events-none" />
-          <div className="relative overflow-hidden border border-border/40 shadow-[0_48px_100px_-24px_rgba(0,0,0,0.3)]">
+          <div className="relative overflow-hidden border border-primary/10 shadow-[0_64px_120px_-32px_rgba(0,0,0,0.8)] bg-black">
             <img 
               src="/images/human_hero.png" 
-              alt="Luxury Workspace" 
-              className="w-full h-auto grayscale-[0.4] hover:grayscale-0 transition-all duration-[3000ms] ease-out scale-105 hover:scale-100"
+              alt="Luxury Sanctuary" 
+              className="w-full h-auto grayscale-[0.6] hover:grayscale-0 transition-all duration-[3000ms] ease-out scale-105 hover:scale-100 opacity-90"
             />
+            {/* Elegant overlay for mobile/desktop transition */}
+            <div className="absolute inset-0 bg-gradient-to-t from-black via-transparent to-transparent opacity-60" />
           </div>
         </motion.div>
       </section>
 
       {/* Features Grid - Centered Harmony */}
-      <section className="bg-secondary/30 py-40 border-y border-border/20">
-        <div className="max-w-7xl mx-auto px-8">
-          <div className="text-center mb-32 space-y-8">
-            <h2 className="text-sm font-bold tracking-[0.5em] uppercase opacity-50">Our Capabilities</h2>
-            <h3 className="text-5xl md:text-6xl font-heading tracking-tight">Crafted for the human mind.</h3>
+      <section className="bg-secondary/10 py-32 md:py-48 border-y border-primary/5">
+        <div className="max-w-7xl mx-auto px-6">
+          <div className="text-center mb-24 md:mb-40 space-y-8">
+            <h2 className="text-[10px] font-bold tracking-[0.5em] uppercase opacity-40">The Architecture</h2>
+            <h3 className="text-5xl md:text-7xl font-heading tracking-tight italic">Precision meets poetry.</h3>
           </div>
 
-          <div className="grid lg:grid-cols-2 gap-24">
+          <div className="grid lg:grid-cols-2 gap-20 md:gap-32">
             {/* Feature 1 */}
             <motion.div 
               className="space-y-12 text-center lg:text-left group"
@@ -127,42 +138,42 @@ export default function LandingPage() {
               initial={{ opacity: 0, y: 40 }}
               viewport={{ once: true }}
             >
-              <div className="relative aspect-[4/5] overflow-hidden border border-border/40 hover:shadow-2xl transition-all duration-1000">
-                <img src="/images/human_yt.png" alt="Visual Scribe" className="w-full h-full object-cover grayscale-[0.3] group-hover:grayscale-0 transition-all duration-[2000ms]" />
-                <div className="absolute inset-0 bg-background/20 group-hover:bg-transparent transition-colors duration-1000" />
+              <div className="relative aspect-[4/5] overflow-hidden border border-primary/10 hover:shadow-2xl transition-all duration-1000 shadow-xl shadow-black/40">
+                <img src="/images/human_yt.png" alt="Visual Scribe" className="w-full h-full object-cover grayscale-[0.5] group-hover:grayscale-0 transition-all duration-[2000ms] scale-110 group-hover:scale-100" />
+                <div className="absolute inset-0 bg-black/40 group-hover:bg-transparent transition-colors duration-1000" />
               </div>
-              <div className="space-y-6 px-4">
-                <h4 className="text-4xl font-heading tracking-tight italic">Visual Scribe</h4>
-                <div className="h-px w-12 bg-primary/40 mx-auto lg:mx-0" />
-                <p className="text-xl text-foreground/70 leading-relaxed font-light">
-                  Convert complex lectures into structured chapters. DeepSeek extracts the essence while you focus on the flow.
+              <div className="space-y-8 px-4">
+                <div className="space-y-2">
+                   <h4 className="text-3xl md:text-4xl font-heading tracking-tight italic text-primary/80 group-hover:text-primary transition-colors">Visual Scribe</h4>
+                   <span className="text-[10px] font-bold tracking-widest uppercase opacity-30">Knowledge Extraction</span>
+                </div>
+                <p className="text-lg md:text-xl text-foreground/60 leading-relaxed font-light italic">
+                  Convert complex visual lectures into structured narratives. Let AI distill the essence while you master the flow.
                 </p>
-                <Button variant="link" className="p-0 text-xs font-bold uppercase tracking-widest text-primary border-b border-primary/20 hover:border-primary transition-all">
-                  See all features
-                </Button>
+                <div className="h-px w-24 bg-primary/20 lg:mx-0 mx-auto" />
               </div>
             </motion.div>
 
             {/* Feature 2 */}
             <motion.div 
-              className="space-y-12 text-center lg:text-left group pt-24 lg:pt-48"
+              className="space-y-12 text-center lg:text-left group pt-20 lg:pt-48"
               whileInView={{ opacity: 1, y: 0 }}
               initial={{ opacity: 0, y: 40 }}
               viewport={{ once: true }}
             >
-              <div className="relative aspect-[4/5] overflow-hidden border border-border/40 hover:shadow-2xl transition-all duration-1000">
-                 <img src="/images/human_hero.png" alt="Knowledge Vault" className="w-full h-full object-cover grayscale-[0.3] group-hover:grayscale-0 transition-all duration-[2000ms] rotate-1" />
-                 <div className="absolute inset-0 bg-background/20 group-hover:bg-transparent transition-colors duration-1000" />
+              <div className="relative aspect-[4/5] overflow-hidden border border-primary/10 hover:shadow-2xl transition-all duration-1000 shadow-xl shadow-black/40">
+                 <img src="/images/human_hero.png" alt="Observation Vault" className="w-full h-full object-cover grayscale-[0.5] group-hover:grayscale-0 transition-all duration-[2000ms] rotate-1 group-hover:rotate-0 scale-110 group-hover:scale-100" />
+                 <div className="absolute inset-0 bg-black/40 group-hover:bg-transparent transition-colors duration-1000" />
               </div>
-              <div className="space-y-6 px-4">
-                <h4 className="text-4xl font-heading tracking-tight italic">Knowledge Vault</h4>
-                <div className="h-px w-12 bg-primary/40 mx-auto lg:mx-0" />
-                <p className="text-xl text-foreground/70 leading-relaxed font-light">
+              <div className="space-y-8 px-4">
+                <div className="space-y-2">
+                   <h4 className="text-3xl md:text-4xl font-heading tracking-tight italic text-primary/80 group-hover:text-primary transition-colors">Thought Archive</h4>
+                   <span className="text-[10px] font-bold tracking-widest uppercase opacity-30">Strategic Storage</span>
+                </div>
+                <p className="text-lg md:text-xl text-foreground/60 leading-relaxed font-light italic">
                   A sanctuary for your observations. Organized, searchable, and infinitely expandable with AI-assisted refinement.
                 </p>
-                <Button variant="link" className="p-0 text-xs font-bold uppercase tracking-widest text-primary border-b border-primary/20 hover:border-primary transition-all">
-                  Access Sanctuary
-                </Button>
+                <div className="h-px w-24 bg-primary/20 lg:mx-0 mx-auto" />
               </div>
             </motion.div>
           </div>
@@ -170,33 +181,25 @@ export default function LandingPage() {
       </section>
 
       {/* Footer - Symmetrical Balance */}
-      <footer className="max-w-7xl mx-auto px-8 py-32 text-center space-y-20">
-        <div className="flex justify-center items-center gap-3 mb-10">
-           <div className="h-px w-32 bg-border/40" />
-           <img src="/images/human_logo.png" alt="Logo" className="w-12 h-12 grayscale opacity-40 hover:opacity-100 transition-all duration-700" />
-           <div className="h-px w-32 bg-border/40" />
+      <footer className="max-w-7xl mx-auto px-6 py-32 text-center space-y-24">
+        <div className="flex justify-center items-center gap-6 opacity-30">
+           <div className="h-px w-16 md:w-32 bg-primary/40" />
+           <BirdLogo className="w-10 h-10 grayscale" />
+           <div className="h-px w-16 md:w-32 bg-primary/40" />
         </div>
         
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-12 text-xs font-bold tracking-[0.3em] uppercase opacity-60">
-          <a href="#" className="hover:text-primary transition-colors">About Us</a>
-          <a href="#" className="hover:text-primary transition-colors">Our Offers</a>
-          <a href="#" className="hover:text-primary transition-colors">My Account</a>
-          <a href="#" className="hover:text-primary transition-colors">Philosophy</a>
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-12 text-[10px] font-bold tracking-[0.4em] uppercase opacity-40">
+          <a href="#" className="hover:text-primary transition-colors">The Manifesto</a>
+          <a href="#" className="hover:text-primary transition-colors">Collection</a>
+          <a href="#" className="hover:text-primary transition-colors">Sanctuary Access</a>
+          <a href="#" className="hover:text-primary transition-colors">Origins</a>
         </div>
 
-        <div className="pt-20 border-t border-border/20 text-[10px] tracking-[0.2em] uppercase opacity-40 font-bold">
-          <span>&copy; 2026 Crafted with Intent. No AI placeholders were used in this design.</span>
+        <div className="pt-20 border-t border-primary/10 text-[10px] tracking-[0.3em] uppercase opacity-30 font-bold max-w-2xl mx-auto leading-relaxed">
+          <span>&copy; 2026 SANCTUARY HUB. CRAFTED FOR THE INTENTIONAL MIND. ALL RIGHTS RESERVED.</span>
         </div>
       </footer>
 
-      <style jsx global>{`
-        .font-heading {
-          font-family: var(--font-heading), serif;
-        }
-        .font-serif {
-          font-family: var(--font-serif), serif;
-        }
-      `}</style>
     </div>
   );
 }

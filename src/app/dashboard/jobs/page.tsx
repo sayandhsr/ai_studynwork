@@ -1,6 +1,6 @@
 import { createClient } from "@/lib/supabase/server"
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from "@/components/ui/card"
-import { Briefcase, MapPin, ExternalLink, MoreVertical } from "lucide-react"
+import { Briefcase, MapPin, ExternalLink, MoreVertical, Sparkles } from "lucide-react"
 import { JobSearchForm } from "./job-search-form"
 import { Button } from "@/components/ui/button"
 import {
@@ -24,56 +24,74 @@ export default async function JobSearchPage() {
     .order("created_at", { ascending: false })
 
   return (
-    <div className="space-y-8 pb-10">
-      <div className="flex flex-col gap-2">
-        <h1 className="text-3xl font-bold tracking-tight">AI Job Search</h1>
-        <p className="text-muted-foreground">Find and curate the best opportunities powered by Firecrawl.</p>
+    <div className="space-y-12 pb-20 font-serif selection:bg-primary/20">
+      <div className="space-y-4">
+        <div className="flex items-center gap-3">
+          <div className="h-px w-8 bg-primary/40" />
+          <span className="text-[10px] font-bold tracking-[0.4em] uppercase opacity-60">Career Journey</span>
+        </div>
+        <h1 className="text-4xl md:text-5xl font-heading tracking-tight italic">AI Job Search</h1>
+        <p className="text-foreground/60 text-lg font-light italic max-w-2xl leading-relaxed">
+          "The perfect opportunity is not found; it is curated through patience and intent."
+        </p>
       </div>
 
-      <JobSearchForm />
+      {/* Search Form Wrapper */}
+      <div className="relative pt-4">
+        <div className="absolute -inset-4 bg-primary/5 blur-3xl rounded-full pointer-events-none" />
+        <JobSearchForm />
+      </div>
 
-      <div className="space-y-4 pt-8 border-t">
-        <h2 className="text-xl font-semibold flex items-center gap-2">
-          <Briefcase className="h-5 w-5 text-primary" />
-          Saved Jobs
-        </h2>
+      <div className="space-y-8 pt-12 border-t border-border/30">
+        <div className="flex items-center justify-between">
+          <h2 className="text-sm font-bold tracking-[0.4em] uppercase opacity-50 flex items-center gap-4">
+            <Briefcase className="h-4 w-4 text-primary" />
+            Curated Opportunities
+          </h2>
+        </div>
 
         {savedJobs && savedJobs.length > 0 ? (
-          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+          <div className="grid gap-8 md:grid-cols-2 lg:grid-cols-3">
             {savedJobs.map((job) => (
-              <Card key={job.id} className="flex flex-col">
-                <CardHeader className="pb-2 flex flex-row items-start justify-between">
-                  <CardTitle className="text-lg leading-tight line-clamp-2 pr-2">
-                    {job.job_title}
-                  </CardTitle>
+              <Card key={job.id} className="flex flex-col rounded-none border-border/40 bg-card overflow-hidden shadow-sm hover:shadow-xl transition-all duration-500 group">
+                <CardHeader className="pb-4 border-b border-border/20 bg-muted/30 flex flex-row items-start justify-between">
+                  <div className="space-y-2 w-full pr-4 text-left">
+                    <h4 className="font-heading text-xl italic tracking-tight line-clamp-2 leading-tight group-hover:text-primary transition-colors">
+                      {job.job_title}
+                    </h4>
+                    <div className="text-[9px] font-bold tracking-[0.2em] uppercase opacity-50 flex items-center gap-2">
+                      <Sparkles className="h-3 w-3 text-primary animate-pulse" />
+                      SAVED RESOURCE
+                    </div>
+                  </div>
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
-                      <Button variant="ghost" size="icon" className="h-8 w-8 -m-2 shrink-0">
-                        <MoreVertical className="h-4 w-4" />
+                      <Button variant="ghost" size="icon" className="h-10 w-10 border border-transparent hover:border-border/30 rounded-none transition-all -mr-2">
+                        <MoreVertical className="h-4 w-4 opacity-50" />
                         <span className="sr-only">Open menu</span>
                       </Button>
                     </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end">
+                    <DropdownMenuContent align="end" className="rounded-none border-border/30 p-2 font-serif bg-card">
                       <DeleteJobButton id={job.id} />
                     </DropdownMenuContent>
                   </DropdownMenu>
                 </CardHeader>
-                <CardContent className="flex-1 space-y-2 pb-2">
-                   <div className="flex items-center gap-2 text-sm font-medium">
-                     <Briefcase className="h-4 w-4 text-muted-foreground shrink-0" />
+                <CardContent className="flex-1 pt-8 px-8 space-y-4">
+                   <div className="flex items-center gap-3 text-base font-light italic opacity-80">
+                     <Briefcase className="h-4 w-4 text-primary opacity-60 shrink-0" />
                      <span className="truncate">{job.company}</span>
                    </div>
                    {job.location && (
-                     <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                     <div className="flex items-center gap-3 text-sm font-light italic opacity-60">
                        <MapPin className="h-4 w-4 shrink-0" />
                        <span className="truncate">{job.location}</span>
                      </div>
                    )}
                 </CardContent>
-                <CardFooter className="pt-2 border-t mt-auto p-4">
-                   <Button size="sm" className="w-full" asChild>
+                <CardFooter className="pt-6 px-8 pb-8 mt-auto border-t border-border/10">
+                   <Button variant="ghost" className="w-full text-[10px] font-bold uppercase tracking-[0.3em] h-12 rounded-none border border-primary/20 hover:bg-primary/10 transition-all" asChild>
                      <a href={job.apply_link} target="_blank" rel="noreferrer">
-                       Apply Now <ExternalLink className="h-3 w-3 ml-2" />
+                       Commence Application <ExternalLink className="h-3 w-3 ml-3" />
                      </a>
                    </Button>
                 </CardFooter>
@@ -81,17 +99,13 @@ export default async function JobSearchPage() {
             ))}
           </div>
         ) : (
-          <div className="flex flex-col items-center justify-center p-12 bg-card rounded-xl border border-dashed text-center">
-            <div className="rounded-full bg-primary/10 p-4 mb-4">
-              <Briefcase className="h-8 w-8 text-primary" />
-            </div>
-            <h3 className="text-lg font-semibold">No saved jobs</h3>
-            <p className="text-sm text-muted-foreground max-w-sm">
-              You haven't saved any jobs yet. Use the search above to find opportunities.
-            </p>
+          <div className="flex flex-col items-center justify-center p-20 bg-muted/10 border border-dashed border-border/40 text-center space-y-4">
+            <Briefcase className="h-10 w-10 opacity-10" />
+            <p className="text-sm font-bold tracking-widest uppercase opacity-40 italic">The journey has no milestones yet.</p>
           </div>
         )}
       </div>
+
     </div>
   )
 }

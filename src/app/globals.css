@@ -140,6 +140,14 @@
   }
 }
 
+/* Global Font Utilities - Luxury Theme */
+.font-heading { 
+  font-family: var(--font-heading), serif !important; 
+}
+.font-serif { 
+  font-family: var(--font-serif), serif !important; 
+}
+
 /* Premium Typography Refinements */
 h1, h2, h3, h4, h5, h6 {
   @apply tracking-tight font-bold;
@@ -147,11 +155,11 @@ h1, h2, h3, h4, h5, h6 {
 
 /* Glassmorphism Utilities */
 .glass {
-  @apply bg-white/5 backdrop-blur-xl border border-white/10 shadow-2xl;
+  @apply bg-background/50 backdrop-blur-xl border border-border/30 shadow-2xl;
 }
 
 .glass-card {
-  @apply bg-white/10 backdrop-blur-md border border-white/20 shadow-xl transition-all duration-300 hover:bg-white/15;
+  @apply bg-card/40 backdrop-blur-md border border-border/20 shadow-xl transition-all duration-300 hover:bg-card/60 hover:border-border/40;
 }
 
 /* Trust-building Grid Background */

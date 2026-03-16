@@ -5,7 +5,7 @@ import { createClient } from "@/lib/supabase/client"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from "@/components/ui/card"
-import { Briefcase, MapPin, Search, Loader2, BookmarkPlus, ExternalLink } from "lucide-react"
+import { Briefcase, MapPin, Search, Loader2, BookmarkPlus, ExternalLink, Sparkles } from "lucide-react"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { useRouter } from "next/navigation"
 
@@ -79,89 +79,103 @@ export function JobSearchForm() {
   }
 
   return (
-    <div className="space-y-6 flex flex-col items-center">
-      <Card className="w-full max-w-3xl border shadow-sm">
-        <CardContent className="p-6">
-          <form onSubmit={handleSearch} className="flex flex-col gap-4">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div className="space-y-2">
-                <label className="text-sm font-medium">Job Role <span className="text-destructive">*</span></label>
-                <div className="relative">
-                  <Briefcase className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+    <div className="space-y-12 flex flex-col items-center">
+      <Card className="w-full max-w-4xl rounded-none border-border/40 border bg-card/50 shadow-2xl relative overflow-hidden">
+        <div className="absolute top-0 right-0 p-4 opacity-10">
+          <Sparkles className="h-12 w-12 text-primary" />
+        </div>
+        <CardContent className="p-10">
+          <form onSubmit={handleSearch} className="flex flex-col gap-10">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+              <div className="space-y-4">
+                <label className="text-[10px] font-bold uppercase tracking-[0.3em] opacity-40">Target Role</label>
+                <div className="relative group">
+                  <Briefcase className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-primary/40 group-focus-within:text-primary transition-colors" />
                   <Input 
                     placeholder="e.g. AI Engineer" 
-                    className="pl-9" 
+                    className="pl-12 h-14 rounded-none border-border/30 focus-visible:ring-primary/20 bg-background/50 italic font-light tracking-wide text-lg" 
                     value={role}
                     onChange={(e) => setRole(e.target.value)}
                   />
                 </div>
               </div>
               
-              <div className="space-y-2">
-                <label className="text-sm font-medium">Location</label>
-                <div className="relative">
-                  <MapPin className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+              <div className="space-y-4">
+                <label className="text-[10px] font-bold uppercase tracking-[0.3em] opacity-40">Preferred Location</label>
+                <div className="relative group">
+                  <MapPin className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-primary/40 group-focus-within:text-primary transition-colors" />
                   <Input 
-                    placeholder="e.g. Remote, New York" 
-                    className="pl-9"
+                    placeholder="e.g. Remote, Europe" 
+                    className="pl-12 h-14 rounded-none border-border/30 focus-visible:ring-primary/20 bg-background/50 italic font-light tracking-wide text-lg"
                     value={location}
                     onChange={(e) => setLocation(e.target.value)}
                   />
                 </div>
               </div>
               
-              <div className="space-y-2">
-                <label className="text-sm font-medium">Experience Level</label>
+              <div className="space-y-4">
+                <label className="text-[10px] font-bold uppercase tracking-[0.3em] opacity-40">Experience Tier</label>
                 <Select value={experience} onValueChange={setExperience}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Any Experience" />
+                  <SelectTrigger className="h-14 rounded-none border-border/30 focus:ring-primary/20 bg-background/50 italic font-light text-lg px-4">
+                    <SelectValue placeholder="All Tiers" />
                   </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="none">Any Experience</SelectItem>
-                    <SelectItem value="Entry Level">Entry Level</SelectItem>
-                    <SelectItem value="Mid Level">Mid Level</SelectItem>
-                    <SelectItem value="Senior Level">Senior</SelectItem>
-                    <SelectItem value="Lead/Manager">Lead/Manager</SelectItem>
+                  <SelectContent className="rounded-none font-serif">
+                    <SelectItem value="none" className="italic">All Tiers</SelectItem>
+                    <SelectItem value="Entry Level" className="italic">Entry Sanctum</SelectItem>
+                    <SelectItem value="Mid Level" className="italic">Mid Ascent</SelectItem>
+                    <SelectItem value="Senior Level" className="italic">Senior Mastery</SelectItem>
+                    <SelectItem value="Lead/Manager" className="italic">Lead Oracle</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
             </div>
             
-            <Button type="submit" disabled={loading} className="w-full md:w-auto md:ml-auto gap-2">
-              {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />}
-              {loading ? "Crawling Jobs..." : "Find Jobs"}
+            <Button type="submit" disabled={loading} className="h-16 gap-4 rounded-none bg-primary hover:bg-primary/90 transition-all font-bold uppercase tracking-[0.3em] text-xs relative overflow-hidden group w-full md:w-auto md:ml-auto md:px-12">
+              {loading ? <Loader2 className="h-5 w-5 animate-spin" /> : <Search className="h-5 w-5" />}
+              {loading ? (
+                <div className="flex flex-col items-start leading-none gap-1">
+                  <span className="text-[10px]">Crawling Digital Oceans</span>
+                  <span className="text-[8px] opacity-60 animate-pulse">Scanning Opportunities</span>
+                </div>
+              ) : "Manifest Opportunities"}
+              <div className="absolute inset-0 bg-white/5 opacity-0 group-hover:opacity-100 transition-opacity skew-x-12 translate-x-full group-hover:translate-x-0 duration-700" />
             </Button>
             
-            {error && <p className="text-sm text-destructive">{error}</p>}
+            {error && <p className="text-xs italic font-bold uppercase tracking-[0.2em] text-destructive">{error}</p>}
           </form>
         </CardContent>
       </Card>
 
       {/* Results Section */}
       {results.length > 0 && (
-        <div className="w-full max-w-5xl space-y-4 pt-4">
-          <h3 className="text-xl font-semibold">Search Results</h3>
-          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+        <div className="w-full max-w-7xl space-y-8 pt-4">
+          <div className="flex items-center gap-4">
+             <div className="h-1 w-1 rounded-full bg-primary/40" />
+             <h3 className="text-[10px] font-bold tracking-[0.4em] uppercase opacity-40">Potential Destinies</h3>
+             <div className="h-px flex-1 bg-border/20" />
+          </div>
+          <div className="grid gap-8 md:grid-cols-2 lg:grid-cols-3">
             {results.map((job, i) => (
-              <Card key={i} className="flex flex-col hover:border-primary/50 transition-colors">
-                <CardHeader className="pb-2">
-                  <CardTitle className="text-lg leading-tight">{job.job_title}</CardTitle>
+              <Card key={i} className="flex flex-col rounded-none border-border/40 bg-card overflow-hidden shadow-sm hover:shadow-xl transition-all duration-500 group">
+                <CardHeader className="pb-4 border-b border-border/20">
+                  <CardTitle className="font-heading text-xl italic tracking-tight line-clamp-2 leading-tight group-hover:text-primary transition-colors">
+                    {job.job_title}
+                  </CardTitle>
                 </CardHeader>
-                <CardContent className="flex-1 space-y-2 pb-2">
-                   <div className="flex items-center gap-2 text-sm font-medium">
-                     <Briefcase className="h-4 w-4 text-muted-foreground" />
-                     {job.company}
+                <CardContent className="flex-1 pt-8 px-8 space-y-4">
+                   <div className="flex items-center gap-3 text-base font-light italic opacity-80">
+                     <Briefcase className="h-4 w-4 text-primary opacity-60 shrink-0" />
+                     <span className="truncate">{job.company}</span>
                    </div>
-                   <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                     <MapPin className="h-4 w-4" />
-                     {job.location}
+                   <div className="flex items-center gap-3 text-sm font-light italic opacity-60">
+                     <MapPin className="h-4 w-4 shrink-0" />
+                     <span className="truncate">{job.location}</span>
                    </div>
                 </CardContent>
-                <CardFooter className="pt-2 flex justify-between border-t gap-2 mt-auto p-4">
+                <CardFooter className="pt-6 px-8 pb-8 flex justify-between border-t border-border/10 gap-4 mt-auto">
                    <Button 
-                     variant="outline" 
-                     size="sm" 
-                     className="flex-1"
+                     variant="ghost" 
+                     className="flex-1 text-[10px] font-bold uppercase tracking-[0.2em] rounded-none border border-border/20 hover:bg-primary/5 transition-all h-12"
                      onClick={() => handleSaveJob(job)}
                      disabled={savingJob === job.apply_link}
                     >
@@ -170,11 +184,11 @@ export function JobSearchForm() {
                      ) : (
                         <BookmarkPlus className="h-4 w-4 mr-2" />
                      )}
-                     Save
+                     CURATE
                    </Button>
-                   <Button size="sm" className="flex-1" asChild>
+                   <Button className="flex-1 text-[10px] font-bold uppercase tracking-[0.2em] rounded-none h-12 bg-primary hover:bg-primary/90 transition-all font-bold" asChild>
                      <a href={job.apply_link} target="_blank" rel="noreferrer">
-                       Apply <ExternalLink className="h-3 w-3 ml-2" />
+                       EXPLORE <ExternalLink className="h-3 w-3 ml-2" />
                      </a>
                    </Button>
                 </CardFooter>

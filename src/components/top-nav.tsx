@@ -39,48 +39,53 @@ export function TopNav({ user }: TopNavProps) {
     : user?.email?.substring(0, 2).toUpperCase() || "U"
 
   return (
-    <header className="sticky top-0 z-40 flex h-16 shrink-0 items-center justify-between gap-2 border-b bg-background px-4 md:px-6">
-      <div className="flex items-center gap-2">
+    <header className="sticky top-0 z-40 flex h-20 shrink-0 items-center justify-between gap-2 border-b border-border/20 bg-background/80 backdrop-blur-xl px-6">
+      <div className="flex items-center gap-4">
         <SidebarTrigger className="md:hidden" />
-        <div className="flex items-center gap-2 font-semibold">
-          <span className="hidden md:inline-block">AI Productivity Suite</span>
+        <div className="flex flex-col md:flex-row md:items-center gap-2 font-serif">
+          <span className="hidden md:inline-block text-[10px] font-bold tracking-[0.4em] uppercase opacity-40">Digital Workspace</span>
+          <div className="hidden md:block h-1 w-1 rounded-full bg-primary/40 mx-2" />
+          <span className="font-heading italic text-lg tracking-tight text-foreground/80">Study Sanctuary</span>
         </div>
       </div>
       
-      <div className="flex items-center gap-4">
+      <div className="flex items-center gap-6">
         <ThemeToggle />
         
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button variant="ghost" size="icon" className="rounded-full">
-              <Avatar className="h-8 w-8">
+            <Button variant="ghost" size="icon" className="rounded-none hover:bg-primary/5 border border-transparent hover:border-border/30 h-10 w-10">
+              <Avatar className="h-8 w-8 rounded-none border border-border/40">
                 <AvatarImage src={user?.avatar_url || ""} alt={user?.name || "User"} />
-                <AvatarFallback>{initials}</AvatarFallback>
+                <AvatarFallback className="bg-primary/10 text-primary font-heading italic">{initials}</AvatarFallback>
               </Avatar>
             </Button>
           </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
-            <DropdownMenuLabel>
+          <DropdownMenuContent align="end" className="rounded-none border-border/30 bg-card shadow-2xl min-w-[200px] p-2 font-serif">
+            <DropdownMenuLabel className="p-4">
               <div className="flex flex-col space-y-1">
-                <p className="text-sm font-medium leading-none">{user?.name || "User"}</p>
-                <p className="text-xs leading-none text-muted-foreground">
+                <p className="text-sm font-heading italic tracking-tight">{user?.name || "User"}</p>
+                <p className="text-[10px] font-bold tracking-widest uppercase opacity-40">
                   {user?.email}
                 </p>
               </div>
             </DropdownMenuLabel>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem>
-              <UserIcon className="mr-2 h-4 w-4" />
-              <span>Profile</span>
+            <DropdownMenuSeparator className="bg-border/20" />
+            <DropdownMenuItem className="h-10 px-4 rounded-none italic font-light hover:bg-primary/5 cursor-pointer">
+              <UserIcon className="mr-3 h-4 w-4 opacity-50 text-primary" />
+              <span>Personal Profile</span>
             </DropdownMenuItem>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem onClick={handleSignOut} className="text-destructive">
-              <LogOut className="mr-2 h-4 w-4" />
-              <span>Log out</span>
+            <DropdownMenuSeparator className="bg-border/20" />
+            <DropdownMenuItem onClick={handleSignOut} className="h-10 px-4 rounded-none italic font-light text-destructive hover:bg-destructive/5 cursor-pointer">
+              <LogOut className="mr-3 h-4 w-4" />
+              <span>Depart Sanctuary</span>
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
       </div>
+      <style jsx global>{`
+        .font-heading { font-family: var(--font-heading), serif; }
+      `}</style>
     </header>
   )
 }
