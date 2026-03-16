@@ -28,14 +28,54 @@ export function AIAssistant() {
     }
   }, [messages])
 
+  const getLocalResponse = (text: string): string | null => {
+    const low = text.toLowerCase().trim()
+    
+    // Greetings
+    if (["hi", "hello", "hey", "hola", "hi there"].includes(low)) {
+      return "Hello! I'm your Productivity Help Desk. How can I assist you with your workspace today?"
+    }
+    
+    // Help / Features
+    if (low.includes("help") || low.includes("what can you do") || low.includes("features")) {
+      return "I can help you with:\n1. 📺 **YouTube Summaries**: Just paste a link to get AI notes.\n2. 📄 **Resume Building**: Create ATS-friendly resumes.\n3. 📝 **Note Saving**: Keep track of your thoughts.\n\nWhat would you like to know more about?"
+    }
+
+    if (low.includes("youtube") || low.includes("summary")) {
+      return "To summarize a video, go to the 'YouTube Summarizer' tab, paste any link (even Shorts!), and click 'Generate'. It works even without transcripts now!"
+    }
+
+    if (low.includes("resume") || low.includes("cv")) {
+      return "Go to the 'Resume Builder' to choose from 21+ premium templates. You can export them as high-quality PDFs for your job search."
+    }
+
+    if (low.includes("note")) {
+      return "You can save and organize your study notes in the 'Notes Saver'. It's synced to your account so you never lose your ideas."
+    }
+
+    if (low.includes("thanks") || low.includes("thank you")) {
+      return "You're very welcome! Let me know if you need anything else to stay productive. 🚀"
+    }
+
+    return null
+  }
+
   const handleSend = async () => {
     if (!input.trim() || isLoading) return
 
     const userMsg = input.trim()
     setInput("")
     setMessages(prev => [...prev, { role: "user", content: userMsg }])
-    setIsLoading(true)
+    
+    // 1. Check for Local Help Desk Response first (Zero Latency, No API Key needed)
+    const localResp = getLocalResponse(userMsg)
+    if (localResp) {
+      setMessages(prev => [...prev, { role: "assistant", content: localResp }])
+      return
+    }
 
+    // 2. Fallback to AI if it's a complex query
+    setIsLoading(true)
     try {
       const response = await fetch("/api/chat", {
         method: "POST",
@@ -51,10 +91,10 @@ export function AIAssistant() {
       const data = await response.json()
 
       if (!response.ok) {
-        throw new Error(data.error || "Failed to reach AI")
+        throw new Error(data.error || "Failed to reach AI knowledge base")
       }
 
-      const aiContent = data.choices?.[0]?.message?.content || "I'm sorry, I'm having trouble processing that right now."
+      const aiContent = data.choices?.[0]?.message?.content || "I'm available for basic help. Try asking about 'YouTube' or 'Resume'!"
       setMessages(prev => [...prev, { role: "assistant", content: aiContent }])
     } catch (error: any) {
       console.error("Chat Error:", error)
@@ -63,8 +103,8 @@ export function AIAssistant() {
       setMessages(prev => [...prev, { 
         role: "assistant", 
         content: isKeyError 
-          ? `⚠️ Assistant setup error: Your OpenRouter API Key is invalid or not found (Error 401). \n\nFIX: Please update the OPENROUTER_API_KEY in your .env.local file with a fresh key from openrouter.ai.`
-          : `⚠️ Assistant sync error: ${error.message}. Please check your connection or API configuration.` 
+          ? `I'm currently in 'Help Desk Mode' because the Advanced AI is offline (API Key error). \n\nI can still help you with basics! Try asking about **YouTube summaries**, **Resume templates**, or type **'help'**.`
+          : `⚠️ Sync issue: ${error.message}. I'm still here for basic help!` 
       }])
     } finally {
       setIsLoading(false)
