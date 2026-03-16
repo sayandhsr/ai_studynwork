@@ -67,9 +67,10 @@ export function AIAssistant() {
     setInput("")
     setMessages(prev => [...prev, { role: "user", content: userMsg }])
     
-    // 1. Check for Local Help Desk Response first (Zero Latency, No API Key needed)
+    // 1. Check for Local Help Desk Response first (CRITICAL: Prioritize for basics)
     const localResp = getLocalResponse(userMsg)
     if (localResp) {
+      console.log(`[Assistant] Local match found for: ${userMsg}`)
       setMessages(prev => [...prev, { role: "assistant", content: localResp }])
       return
     }
@@ -91,7 +92,7 @@ export function AIAssistant() {
       const data = await response.json()
 
       if (!response.ok) {
-        throw new Error(data.error || "Failed to reach AI knowledge base")
+        throw new Error(data.error || "Sync error")
       }
 
       const aiContent = data.choices?.[0]?.message?.content || "I'm available for basic help. Try asking about 'YouTube' or 'Resume'!"
@@ -103,8 +104,8 @@ export function AIAssistant() {
       setMessages(prev => [...prev, { 
         role: "assistant", 
         content: isKeyError 
-          ? `I'm currently in 'Help Desk Mode' because the Advanced AI is offline (API Key error). \n\nI can still help you with basics! Try asking about **YouTube summaries**, **Resume templates**, or type **'help'**.`
-          : `⚠️ Sync issue: ${error.message}. I'm still here for basic help!` 
+          ? `I'm in 'Help Desk Mode' because your OpenRouter API Key is invalid (Error 401). \n\nI can still help you! Ask about **YouTube summaries**, **Resume templates**, or type **'help'**.`
+          : `I'm currently having a sync issue, but I'm still here for basic help! Try asking about features.` 
       }])
     } finally {
       setIsLoading(false)
