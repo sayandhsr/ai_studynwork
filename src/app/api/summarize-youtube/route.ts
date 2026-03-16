@@ -61,39 +61,51 @@ export async function POST(req: Request) {
       console.error("[YT API] RapidAPI connection error:", err.message);
     }
 
-    // --- METADATA FALLBACK ---
+    // --- ROBUST FALLBACK (FIRECRAWL DEEP SCRAPE) ---
     if (!transcriptText || transcriptText.length < 50) {
-      console.log(`[YT API] Transcript unavailable. Fetching metadata for: ${videoId}`);
-      try {
-        const videoUrl = `https://www.youtube.com/watch?v=${videoId}`;
-        const metaRes = await fetch(videoUrl, {
-          headers: {
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+      const firecrawlKey = process.env.FIRECRAWL_API_KEY;
+      if (firecrawlKey) {
+        console.log(`[YT API] Transcript unavailable. Deep-scraping via Firecrawl for: ${videoId}`);
+        try {
+          const firecrawlRes = await fetch("https://api.firecrawl.dev/v1/scrape", {
+            method: "POST",
+            headers: {
+              "Authorization": `Bearer ${firecrawlKey}`,
+              "Content-Type": "application/json"
+            },
+            body: JSON.stringify({
+              url: `https://www.youtube.com/watch?v=${videoId}`,
+              formats: ["markdown", "metadata"]
+            })
+          });
+
+          if (firecrawlRes.ok) {
+            const fcData = await firecrawlRes.json();
+            if (fcData.success && fcData.data) {
+              const content = fcData.data.markdown || "";
+              const title = fcData.data.metadata?.title || "Unknown Video";
+              const description = fcData.data.metadata?.description || "";
+              
+              transcriptText = `DEEP SCRAPE CONTEXT (TRANSCRIPT UNAVAILABLE):\nTitle: ${title}\nDescription: ${description}\n\nPage Content:\n${content.substring(0, 5000)}`; // Caps at 5k to prevent token bloat
+              console.log(`[YT API] Firecrawl success! Fetched ${transcriptText.length} chars.`);
+            }
+          } else {
+            console.error(`[YT API] Firecrawl Error (${firecrawlRes.status})`);
           }
-        });
-        const html = await metaRes.text();
-        
-        const titleMatch = html.match(/<title>(.*?) - YouTube<\/title>/);
-        const descMatch = html.match(/<meta name="description" content="(.*?)">/);
-        
-        const title = titleMatch ? titleMatch[1] : "Unknown Title";
-        const description = descMatch ? descMatch[1] : "No description available.";
-        
-        transcriptText = `VIDEO METADATA (TRANSCRIPT UNAVAILABLE):\nTitle: ${title}\nDescription: ${description}`;
-        console.log(`[YT API] Metadata fallback success: ${title}`);
-      } catch (metaErr: any) {
-        console.error("[YT API] Metadata fallback failed:", metaErr.message);
+        } catch (fcErr: any) {
+          console.error("[YT API] Firecrawl connection failed:", fcErr.message);
+        }
       }
     }
 
     // Final sanity check
     if (!transcriptText || transcriptText.length < 20) {
       return NextResponse.json({ 
-        error: "Failed to extract any video information. Even the video metadata is unreachable. Please try a different video." 
+        error: "Failed to extract video information. Even the deep-scrape was unsuccessful. Please check if the video is private or restricted." 
       }, { status: 400 });
     }
 
-    console.log(`[YT API] Final Transcript Length: ${transcriptText.length} characters`);
+    console.log(`[YT API] Content ready for AI processing. Length: ${transcriptText.length} characters`);
 
     const openRouterApiKey = process.env.OPENROUTER_API_KEY
     if (!openRouterApiKey) {
@@ -124,12 +136,13 @@ export async function POST(req: Request) {
             messages: [
               { 
                 role: "system", 
-                content: `You are an expert content summarizer. 
-                - If the user provides a transcript, provide a concise summary, key points, and bulleted highlights.
-                - If the user provides metadata (Title/Description) because a transcript was unavailable, provide the best possible summary and insights based on that metadata. Start by mentioning: "Note: Full transcript was unavailable; summary based on video metadata."
-                Format the output professionally using Markdown.` 
+                content: `You are an expert content analyzer and educator. 
+                Your goal is to provide a deep, readable, and context-rich study of the provided content.
+                - If the content is a transcript: Extract the core arguments, step-by-step logic, and key wisdom.
+                - If the content is from a page scrape (No Transcript): Analyze the Title, Description, and available page text to reconstruct the video's likely message and value. Start by saying "Summary based on video context and metadata."
+                Format professionally using Markdown. Use bold headers, bullet points, and a 'Core Insights' section.` 
               },
-              { role: "user", content: `Please summarize this content:\n\n${transcriptText}` }
+              { role: "user", content: `Please provide a detailed study of this content:\n\n${transcriptText}` }
             ]
           }),
           signal: AbortSignal.timeout(60000) // 1 minute timeout
