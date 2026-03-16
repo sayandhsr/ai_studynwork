@@ -33,18 +33,18 @@ export default function LandingPage() {
   };
 
   return (
-    <div className="min-h-screen bg-[#FFF5E1] text-[#1c1917] overflow-x-hidden font-sans">
+    <div className="min-h-screen bg-[#FDFBF7] text-[#2D2A26] overflow-x-hidden font-serif">
       {/* Navigation */}
-      <nav className="flex items-center justify-between px-8 py-6 max-w-7xl mx-auto">
-        <div className="flex items-center gap-2">
-          <div className="bg-primary text-white p-2 rounded-xl">
-            <Sparkles className="w-6 h-6" />
+      <nav className="flex items-center justify-between px-8 py-6 max-w-7xl mx-auto border-b border-[#E8E2D9]">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 relative">
+            <img src="/images/human_logo.png" alt="Hub Logo" className="w-full h-full object-contain" />
           </div>
-          <span className="text-xl font-bold tracking-tight">AI Productivity Hub</span>
+          <span className="text-xl font-semibold tracking-tight uppercase">AI Productivity Hub</span>
         </div>
         <Button 
           variant="outline" 
-          className="rounded-full px-6 border-stone-300 hover:bg-stone-100 transition-all"
+          className="rounded-xl px-6 border-[#D6CFC7] hover:bg-[#F5F1EB] transition-all text-[#2D2A26]"
           onClick={handleGoogleLogin}
         >
           Sign In
@@ -52,133 +52,129 @@ export default function LandingPage() {
       </nav>
 
       {/* Hero Section */}
-      <section className="max-w-7xl mx-auto px-8 py-12 md:py-24 flex flex-col md:flex-row items-center gap-12">
+      <section className="max-w-7xl mx-auto px-8 py-12 md:py-24 flex flex-col lg:flex-row items-center gap-16">
         <motion.div 
-          className="flex-1 space-y-8"
+          className="flex-1 space-y-10"
           initial="initial"
           animate="animate"
           variants={fadeInUp}
         >
-          <div className="inline-flex items-center gap-2 bg-stone-100 px-4 py-2 rounded-full text-sm font-medium border border-stone-200">
-            <span className="flex h-2 w-2 rounded-full bg-blue-500 animate-pulse" />
-            Next Gen AI Workspace
+          <div className="inline-flex items-center gap-2 bg-[#F5F1EB] px-5 py-2 rounded-xl text-xs font-bold tracking-widest uppercase border border-[#E8E2D9]">
+            <span className="flex h-2 w-2 rounded-full bg-[#8B7E6F]" />
+            Human-Crafted Experience
           </div>
-          <h1 className="text-6xl md:text-7xl font-extrabold leading-[1.1] tracking-tight">
-            Supercharge Your <span className="bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">Learning</span> Flow.
+          <h1 className="text-6xl md:text-8xl font-black leading-[0.9] tracking-tighter text-[#2D2A26]">
+            Elegant <span className="italic font-light">Wisdom</span>.
           </h1>
-          <p className="text-xl text-stone-600 max-w-xl leading-relaxed">
-            Turn hours of video into minutes of insight. Save, organize, and transform your notes with the power of Grok and DeepSeek AI.
+          <p className="text-2xl text-[#5E5851] max-w-xl leading-relaxed font-light">
+            Capture your thoughts with the precision of AI and the warmth of a classic journal. Transform tutorials into your personal library.
           </p>
-          <div className="flex flex-col sm:flex-row gap-4 pt-4">
+          <div className="flex flex-col sm:flex-row gap-6 pt-6">
             <Button 
               size="lg" 
-              className="h-14 px-10 rounded-2xl text-lg font-semibold gap-2 shadow-xl shadow-stone-200"
+              className="h-16 px-12 rounded-xl text-lg font-bold bg-[#2D2A26] hover:bg-[#403C37] text-white shadow-2xl transition-all"
               onClick={handleGoogleLogin}
               disabled={loading}
             >
-              {loading ? <Loader2 className="animate-spin" /> : <><Sparkles className="w-5 h-5" /> Get Started Free</>}
+              {loading ? <Loader2 className="animate-spin" /> : <>Enter the Hub</>}
             </Button>
-            <Button size="lg" variant="ghost" className="h-14 px-8 text-lg font-medium group">
-              Learn more <ArrowRight className="w-5 h-5 ml-2 group-hover:translate-x-1 transition-transform" />
+            <Button size="lg" variant="ghost" className="h-16 px-8 text-lg font-medium hover:bg-[#F5F1EB] group border border-transparent hover:border-[#E8E2D9]">
+              The Philosophy <ArrowRight className="w-5 h-5 ml-2 group-hover:translate-x-1 transition-transform" />
             </Button>
           </div>
         </motion.div>
 
         <motion.div 
           className="flex-1 relative"
-          initial={{ opacity: 0, scale: 0.9 }}
-          animate={{ opacity: 1, scale: 1 }}
-          transition={{ duration: 0.8, delay: 0.2 }}
+          initial={{ opacity: 0, x: 20 }}
+          animate={{ opacity: 1, x: 0 }}
+          transition={{ duration: 1, delay: 0.2 }}
         >
-          <div className="absolute -inset-4 bg-gradient-to-tr from-blue-500/20 to-purple-500/20 blur-3xl opacity-50 rounded-full" />
-          <div className="relative glass-card overflow-hidden rounded-[2.5rem] border border-stone-200 shadow-2xl">
+          <div className="relative overflow-hidden rounded-2xl border-[12px] border-white shadow-[0_32px_64px_-16px_rgba(0,0,0,0.1)]">
             <img 
-              src="/images/hero.png" 
-              alt="AI Workspace" 
-              className="w-full h-auto object-cover"
+              src="/images/human_hero.png" 
+              alt="Classic Workspace" 
+              className="w-full h-auto grayscale-[0.2] hover:grayscale-0 transition-all duration-1000"
             />
           </div>
         </motion.div>
       </section>
 
       {/* Features Grid */}
-      <section className="bg-stone-50/50 py-24 border-y border-stone-200">
+      <section className="bg-[#F5F1EB] py-32 border-y border-[#E8E2D9]">
         <div className="max-w-7xl mx-auto px-8">
-          <div className="text-center mb-20 space-y-4">
-            <h2 className="text-4xl font-bold">Tools built for the modern student.</h2>
-            <p className="text-stone-500 text-lg">Everything you need to master your subjects with less effort.</p>
+          <div className="text-center mb-24 space-y-6">
+            <h2 className="text-5xl font-black tracking-tighter">Crafted for the Deep Learner.</h2>
+            <p className="text-[#5E5851] text-xl max-w-2xl mx-auto font-light">Minimalist tools designed to disappear so you can focus on what truly matters.</p>
           </div>
 
-          <div className="grid md:grid-cols-2 gap-8">
+          <div className="grid md:grid-cols-2 gap-12">
             {/* Feature 1 */}
             <motion.div 
-              className="group p-8 rounded-[2rem] bg-white border border-stone-200 shadow-sm hover:shadow-xl transition-all duration-500"
-              whileHover={{ y: -5 }}
+              className="group p-10 rounded-2xl bg-[#FDFBF7] border border-[#E8E2D9] shadow-sm hover:shadow-2xl transition-all duration-700"
+              whileHover={{ y: -10 }}
             >
-              <div className="w-full aspect-video rounded-2xl overflow-hidden mb-8 bg-stone-100">
-                <img src="/images/yt-feature.png" alt="YouTube Summarizer" className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700" />
+              <div className="w-full aspect-[4/3] rounded-xl overflow-hidden mb-10 border border-[#E8E2D9]">
+                <img src="/images/human_yt.png" alt="YouTube Insights" className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-[2000ms]" />
               </div>
-              <div className="flex items-center gap-3 mb-4">
-                <div className="p-3 rounded-2xl bg-red-50 text-red-600">
-                  <Youtube className="w-6 h-6" />
+              <div className="space-y-4">
+                <h3 className="text-3xl font-black tracking-tighter uppercase">Visual Scribe</h3>
+                <p className="text-[#5E5851] text-xl leading-relaxed font-light">
+                  Convert complex lectures into structured chapters. DeepSeek extracts the essence while you focus on the flow.
+                </p>
+                <div className="pt-6">
+                  <Button variant="link" className="p-0 text-xl font-bold text-[#2D2A26] decoration-2 underline-offset-8">
+                    Open Reader <ArrowRight className="ml-2 w-5 h-5 inline" />
+                  </Button>
                 </div>
-                <h3 className="text-2xl font-bold">YouTube AI Summarizer</h3>
               </div>
-              <p className="text-stone-600 text-lg leading-relaxed mb-6">
-                Paste any link and let DeepSeek extract the core wisdom. Perfect for lectures, tutorials, and long webinars.
-              </p>
-              <Button variant="link" className="p-0 text-lg font-bold group-hover:gap-2 transition-all">
-                Try it now <ArrowRight className="w-5 h-5" />
-              </Button>
             </motion.div>
 
             {/* Feature 2 */}
             <motion.div 
-              className="group p-8 rounded-[2rem] bg-white border border-stone-200 shadow-sm hover:shadow-xl transition-all duration-500"
-              whileHover={{ y: -5 }}
+              className="group p-10 rounded-2xl bg-[#FDFBF7] border border-[#E8E2D9] shadow-sm hover:shadow-2xl transition-all duration-700"
+              whileHover={{ y: -10 }}
             >
-              <div className="w-full aspect-video rounded-2xl overflow-hidden mb-8 bg-stone-100">
-                <img src="/images/notes-feature.png" alt="Smart Note Saver" className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700" />
+              <div className="w-full aspect-[4/3] rounded-xl overflow-hidden mb-10 border border-[#E8E2D9] bg-[#2D2A26] flex items-center justify-center">
+                 <img src="/images/human_hero.png" alt="Notes" className="w-full h-full object-cover opacity-80 group-hover:opacity-100 transition-opacity" />
               </div>
-              <div className="flex items-center gap-3 mb-4">
-                <div className="p-3 rounded-2xl bg-blue-50 text-blue-600">
-                  <StickyNote className="w-6 h-6" />
+              <div className="space-y-4">
+                <h3 className="text-3xl font-black tracking-tighter uppercase">Knowledge Vault</h3>
+                <p className="text-[#5E5851] text-xl leading-relaxed font-light">
+                  A sanctuary for your observations. Organized, searchable, and infinitely expandable with AI-assisted refinement.
+                </p>
+                <div className="pt-6">
+                  <Button variant="link" className="p-0 text-xl font-bold text-[#2D2A26] decoration-2 underline-offset-8">
+                    Access Library <ArrowRight className="ml-2 w-5 h-5 inline" />
+                  </Button>
                 </div>
-                <h3 className="text-2xl font-bold">Smart Note Saver</h3>
               </div>
-              <p className="text-stone-600 text-lg leading-relaxed mb-6">
-                Organize your knowledge in one place. Export to PDF, format professionally, and access from anywhere.
-              </p>
-              <Button variant="link" className="p-0 text-lg font-bold group-hover:gap-2 transition-all">
-                Start writing <ArrowRight className="w-5 h-5" />
-              </Button>
             </motion.div>
           </div>
         </div>
       </section>
 
-      {/* Social Proof / Footer */}
-      <footer className="max-w-7xl mx-auto px-8 py-16 text-center text-stone-400">
-        <p className="mb-8">Powering 10,000+ notes globally. Built for speed.</p>
-        <div className="flex justify-center gap-8 mb-12 opacity-50 grayscale">
-          {/* Placeholders for logos if needed */}
+      {/* Footer */}
+      <footer className="max-w-7xl mx-auto px-8 py-20 text-[#5E5851]">
+        <div className="flex flex-col md:flex-row justify-between items-center gap-10">
+          <div className="flex items-center gap-3">
+             <img src="/images/human_logo.png" alt="Logo" className="w-8 h-8 opacity-60" />
+             <span className="font-bold tracking-widest uppercase text-sm">AI Productivity Hub</span>
+          </div>
+          <div className="flex gap-12 text-sm uppercase font-bold tracking-widest">
+            <a href="#" className="hover:text-[#2D2A26] transition-colors">Journal</a>
+            <a href="#" className="hover:text-[#2D2A26] transition-colors">Manifesto</a>
+            <a href="#" className="hover:text-[#2D2A26] transition-colors">Account</a>
+          </div>
         </div>
-        <div className="pt-8 border-t border-stone-200 flex justify-between items-center text-sm">
-          <span>&copy; 2026 AI Productivity Hub. All rights reserved.</span>
-          <div className="flex gap-6">
-            <a href="#" className="hover:text-stone-900 transition-colors">Privacy</a>
-            <a href="#" className="hover:text-stone-900 transition-colors">Terms</a>
+        <div className="mt-16 pt-10 border-t border-[#E8E2D9] flex flex-col sm:flex-row justify-between items-center gap-6 text-xs uppercase tracking-widest font-bold opacity-60">
+          <span>&copy; 2026 Crafted in Silence. All rights reserved.</span>
+          <div className="flex gap-8">
+            <a href="#" className="hover:text-[#2D2A26]">Data Policy</a>
+            <a href="#" className="hover:text-[#2D2A26]">Ethical Code</a>
           </div>
         </div>
       </footer>
-
-      <style jsx global>{`
-        .glass-card {
-          background: rgba(255, 255, 255, 0.7);
-          backdrop-filter: blur(10px);
-          -webkit-backdrop-filter: blur(10px);
-        }
-      `}</style>
     </div>
   );
 }
