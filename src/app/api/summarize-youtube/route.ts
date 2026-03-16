@@ -217,7 +217,28 @@ export async function POST(req: Request) {
     }
 
     if (!summary) {
-      throw new Error(`AI Providers failed to generate summary. ${lastError}`)
+      console.warn(`[YT API] AI Error: ${lastError}. Falling back to Heuristic Summary.`);
+      // Heuristic Summary Generation (No AI Key Needed)
+      const titleMatch = transcriptText.match(/Video Title: (.*?)\n/);
+      const videoTitle = titleMatch ? titleMatch[1] : "YouTube Video";
+      const descMatch = transcriptText.match(/Video Description:\n([\s\S]*?)\n\n/);
+      const videoDesc = descMatch ? descMatch[1] : "";
+
+      summary = `### 📋 Heuristic Video Overview (Basic Mode)
+*The AI knowledge base is currently offline, so I've generated this study from the video's public metadata.*
+
+**Video:** ${videoTitle}
+
+#### 🎯 Core Objective
+Based on the title "${videoTitle}", this content likely focuses on providing information or entertainment related to this topic.
+
+#### 📝 Extracted Description Snippets
+${videoDesc ? videoDesc.substring(0, 500) + "..." : "No detailed description was available for deeper analysis."}
+
+#### 💡 Suggested Study Points
+1. Review the title's core keywords to understand the primary subject.
+2. Check the video creator's other content for context.
+3. Use 'Manual Mode' to paste a specific transcript for a deeper, AI-powered analysis once the sync is restored.`;
     }
 
     // Save to database
