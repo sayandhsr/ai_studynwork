@@ -164,14 +164,14 @@ export async function POST(req: Request) {
       }
     }
 
-    // Final check for content - Extremely relaxed. If we have a title, we try.
+    // --- ZERO-BARRIER FALLBACK ---
+    // If absolutely no data was found, we don't block. We send the URL to the AI.
     if (!transcriptText || transcriptText.length < 5) {
-      return NextResponse.json({ 
-        error: "Access Blocked: This video is truly private or requires login. \n\nFIX: Open the video on YouTube, click '... More' -> 'Show Transcript', and use 'Manual Mode' to paste it here." 
-      }, { status: 400 });
+      transcriptText = `[[URL_ONLY_MODE]]\nVideo URL: ${url}`;
+      console.log("[YT API] Scrapers provided zero data. Proceeding in Link-Only Mode.");
     }
 
-    console.log(`[YT API] Starting AI Summarization. Mode: ${transcriptText.includes("UNIVERSAL METADATA INFERENCE") ? "Inference" : "Direct"}`);
+    console.log(`[YT API] Summarizing. Mode: ${transcriptText.includes("[[URL_ONLY_MODE]]") ? "Link-Only" : transcriptText.includes("UNIVERSAL METADATA INFERENCE") ? "Inference" : "Direct"}`);
 
     const openRouterApiKey = process.env.OPENROUTER_API_KEY
     if (!openRouterApiKey) {
@@ -206,9 +206,11 @@ export async function POST(req: Request) {
               { 
                 role: "system", 
                 content: `You are an expert content analyzer. 
-                ${isMetadataOnly 
-                  ? "NOTICE: This video has NO CAPTIONS. Use the provided Title, Description, and Page snippets to reconstruct the video's core message and provide a detailed study." 
-                  : "Your goal is to provide a deep, readable, and context-rich study of the provided transcript."}
+                ${transcriptText.includes("[[URL_ONLY_MODE]]")
+                  ? "NOTICE: Accessibility scrapers failed to find a transcript. You are provided ONLY with the video URL. Please use your internal knowledge of this video or its metadata to provide a detailed study guide. If it is a very recent or private video you cannot see, explain that you are giving a general overview based on the link."
+                  : isMetadataOnly 
+                    ? "NOTICE: This video has NO CAPTIONS. Use the provided Title, Description, and Page snippets to reconstruct the video's core message and provide a detailed study." 
+                    : "Your goal is to provide a deep, readable, and context-rich study of the provided transcript."}
                 Format professionally using Markdown. Use bold headers, bullet points, and a 'Core Insights' section.` 
               },
               { role: "user", content: `Please provide a detailed study of this content:\n\n${transcriptText}` }
