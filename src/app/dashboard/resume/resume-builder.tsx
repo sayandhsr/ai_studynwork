@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { Card, CardContent } from "@/components/ui/card"
 import { Printer, Save, Loader2, LayoutTemplate } from "lucide-react"
+import { ScrollArea } from "@/components/ui/scroll-area"
 
 // Types for Resume Data
 interface Experience {
@@ -38,7 +39,12 @@ interface ResumeData {
   skills: string
 }
 
-const TEMPLATES = ["Clear", "Modern", "Classic", "Minimal"]
+const TEMPLATES = [
+  "Clear", "Modern", "Classic", "Minimal", "Executive", "Creative", 
+  "Academic", "Compact", "Elegant", "Professional", "Sharp", "Soft",
+  "Blueprint", "Chalk", "Cyber", "Nature", "Sunset", "Gothic",
+  "Journal", "Retro", "Futuristic"
+]
 
 export function ResumeBuilder() {
   const supabase = createClient()
@@ -52,13 +58,13 @@ export function ResumeBuilder() {
       summary: "Experienced software engineer passionate about building scalable, user-friendly applications."
     },
     experience: [
-      { id: "1", company: "TechNova", role: "Senior Developer", period: "2020 - Present", description: "Led frontend team. Improved performance by 40%." },
-      { id: "2", company: "StartUp Inc", role: "Software Engineer", period: "2018 - 2020", description: "Developed main product features using React and Node.js." }
+      { id: "1", company: "TechNova", role: "Senior Developer", period: "2020 - Present", description: "Led frontend team. Improved performance by 40%. Collaborated with stakeholders to define product roadmap." },
+      { id: "2", company: "StartUp Inc", role: "Software Engineer", period: "2018 - 2020", description: "Developed main product features using React and Node.js. Optimized database queries." }
     ],
     education: [
       { id: "1", school: "University of Tech", degree: "BS Computer Science", year: "2018" }
     ],
-    skills: "JavaScript, TypeScript, React, Next.js, Node.js, SQL, TailwindCSS"
+    skills: "JavaScript, TypeScript, React, Next.js, Node.js, SQL, TailwindCSS, AWS, Docker"
   })
 
   const [activeTemplate, setActiveTemplate] = useState("Clear")
@@ -96,25 +102,44 @@ export function ResumeBuilder() {
     }))
   }
 
-  // Basic ATS-friendly layout components
-  const Header = () => (
-    <div className={`text-center border-b pb-4 mb-4 ${activeTemplate === 'Classic' ? 'border-b-2 border-black' : ''}`}>
-      <h1 className={`text-3xl font-bold uppercase tracking-wider ${activeTemplate === 'Modern' ? 'text-primary' : 'text-black'}`}>
-        {data.personalInfo.fullName}
-      </h1>
-      <div className="text-sm mt-2 flex flex-wrap justify-center gap-3 text-gray-600">
-        <span>{data.personalInfo.email}</span>
-        <span>•</span>
-        <span>{data.personalInfo.phone}</span>
-        <span>•</span>
-        <span>{data.personalInfo.location}</span>
+  // --- TEMPLATE ENGINE ---
+  
+  const getTemplateStyles = () => {
+    switch(activeTemplate) {
+      case 'Classic': return "font-serif text-[12pt] text-gray-900"
+      case 'Modern': return "font-sans text-[11pt] text-slate-800"
+      case 'Creative': return "font-sans text-[11pt] text-indigo-900 border-l-[8px] border-indigo-500 pl-8"
+      case 'Executive': return "font-serif text-[12pt] text-black border-t-[12px] border-black pt-8"
+      case 'Minimal': return "font-sans text-[10pt] text-gray-700 tracking-tight"
+      case 'Blueprint': return "font-mono text-[11pt] text-blue-900 bg-blue-50/20"
+      case 'Sunset': return "font-sans text-[11pt] text-orange-950 border-orange-200"
+      case 'Cyber': return "font-mono text-[11pt] text-emerald-900 border-emerald-200"
+      case 'Nature': return "font-sans text-[11pt] text-green-950 border-green-200"
+      case 'Futuristic': return "font-sans text-[11pt] text-zinc-900 uppercase tracking-widest"
+      default: return "font-sans text-[11pt] text-black"
+    }
+  }
+
+  const Header = () => {
+    const isCentered = !['Creative', 'Executive', 'Futuristic'].includes(activeTemplate)
+    return (
+      <div className={`mb-8 ${isCentered ? 'text-center' : 'text-left'} ${['Executive', 'Modern'].includes(activeTemplate) ? 'border-b-2 pb-6' : ''}`}>
+        <h1 className={`text-4xl font-black mb-2 ${activeTemplate === 'Modern' ? 'text-primary' : activeTemplate === 'Creative' ? 'text-indigo-600' : 'text-black'}`}>
+          {data.personalInfo.fullName}
+        </h1>
+        <div className="flex flex-wrap gap-4 text-sm font-medium opacity-70">
+          <span>{data.personalInfo.email}</span>
+          <span>{data.personalInfo.phone}</span>
+          <span>{data.personalInfo.location}</span>
+        </div>
       </div>
-    </div>
-  )
+    )
+  }
 
   const Section = ({ title, children }: { title: string, children: React.ReactNode }) => (
-    <div className="mb-6">
-      <h2 className={`text-lg font-bold uppercase tracking-widest mb-3 ${activeTemplate === 'Clear' ? 'border-b border-gray-300 pb-1' : ''}`}>
+    <div className={`mb-8 ${activeTemplate === 'Futuristic' ? 'border-l-4 border-black pl-4' : ''}`}>
+      <h2 className={`text-xs font-black uppercase tracking-[0.2em] mb-4 
+        ${['Modern', 'Clear', 'Compact'].includes(activeTemplate) ? 'text-primary border-b border-primary/20 pb-1' : 'text-gray-500'}`}>
         {title}
       </h2>
       <div>{children}</div>
@@ -122,120 +147,146 @@ export function ResumeBuilder() {
   )
 
   return (
-    <div className="flex flex-col lg:flex-row gap-8">
+    <div className="flex flex-col lg:flex-row gap-8 items-start">
       {/* Form Controls */}
-      <div className="w-full lg:w-1/3 space-y-6">
-        <div className="flex flex-wrap gap-2">
-           {TEMPLATES.map((tmpl) => (
-              <Button 
-                key={tmpl} 
-                variant={activeTemplate === tmpl ? "default" : "outline"} 
-                size="sm"
-                onClick={() => setActiveTemplate(tmpl)}
-              >
-                <LayoutTemplate className="w-4 h-4 mr-2" />
-                {tmpl}
-              </Button>
-           ))}
+      <div className="w-full lg:w-[400px] shrink-0 space-y-6">
+        <div className="space-y-3">
+          <h3 className="text-sm font-bold flex items-center gap-2">
+            <LayoutTemplate className="w-4 h-4 text-primary" />
+            21 Premium Templates
+          </h3>
+          <ScrollArea className="h-[120px] w-full border rounded-xl bg-card p-2">
+            <div className="grid grid-cols-3 gap-2">
+               {TEMPLATES.map((tmpl) => (
+                  <Button 
+                    key={tmpl} 
+                    variant={activeTemplate === tmpl ? "default" : "outline"} 
+                    size="sm"
+                    className="text-[10px] h-8 truncate px-1"
+                    onClick={() => setActiveTemplate(tmpl)}
+                  >
+                    {tmpl}
+                  </Button>
+               ))}
+            </div>
+          </ScrollArea>
         </div>
 
-        <Card>
-          <CardContent className="p-4 space-y-4">
-            <h3 className="font-semibold text-lg border-b pb-2">Personal Info</h3>
-            <Input 
-              placeholder="Full Name" 
-              value={data.personalInfo.fullName} 
-              onChange={(e) => updatePersonalInfo("fullName", e.target.value)} 
-            />
-             <Input 
-              placeholder="Email" 
-              value={data.personalInfo.email} 
-              onChange={(e) => updatePersonalInfo("email", e.target.value)} 
-            />
-             <Input 
-              placeholder="Phone" 
-              value={data.personalInfo.phone} 
-              onChange={(e) => updatePersonalInfo("phone", e.target.value)} 
-            />
-            <Input 
-              placeholder="Location" 
-              value={data.personalInfo.location} 
-              onChange={(e) => updatePersonalInfo("location", e.target.value)} 
-            />
-            <Textarea 
-              placeholder="Professional Summary" 
-              value={data.personalInfo.summary} 
-              onChange={(e) => updatePersonalInfo("summary", e.target.value)} 
-              rows={3}
-            />
+        <Card className="border-primary/10 shadow-sm overflow-hidden rounded-2xl">
+          <ScrollArea className="h-[500px]">
+            <CardContent className="p-6 space-y-6">
+              <div className="space-y-4">
+                <h3 className="font-bold text-sm text-primary uppercase tracking-widest">Personal Info</h3>
+                <Input 
+                  placeholder="Full Name" 
+                  value={data.personalInfo.fullName} 
+                  onChange={(e) => updatePersonalInfo("fullName", e.target.value)} 
+                  className="rounded-xl border-primary/5"
+                />
+                <Input 
+                  placeholder="Email" 
+                  value={data.personalInfo.email} 
+                  onChange={(e) => updatePersonalInfo("email", e.target.value)} 
+                  className="rounded-xl border-primary/5"
+                />
+                <Input 
+                  placeholder="Phone" 
+                  value={data.personalInfo.phone} 
+                  onChange={(e) => updatePersonalInfo("phone", e.target.value)} 
+                  className="rounded-xl border-primary/5"
+                />
+                <Input 
+                  placeholder="Location" 
+                  value={data.personalInfo.location} 
+                  onChange={(e) => updatePersonalInfo("location", e.target.value)} 
+                  className="rounded-xl border-primary/5"
+                />
+                <Textarea 
+                  placeholder="Professional Summary" 
+                  value={data.personalInfo.summary} 
+                  onChange={(e) => updatePersonalInfo("summary", e.target.value)} 
+                  rows={4}
+                  className="rounded-xl border-primary/5 resize-none"
+                />
+              </div>
 
-            <h3 className="font-semibold text-lg border-b pb-2 pt-4">Skills</h3>
-            <Textarea 
-              placeholder="Comma separated skills" 
-              value={data.skills} 
-              onChange={(e) => setData(prev => ({...prev, skills: e.target.value}))} 
-              rows={2}
-            />
-          </CardContent>
+              <div className="space-y-4 pt-4 border-t border-primary/5">
+                <h3 className="font-bold text-sm text-primary uppercase tracking-widest">Skills</h3>
+                <Textarea 
+                  placeholder="e.g. React, Node.js, SQL..." 
+                  value={data.skills} 
+                  onChange={(e) => setData(prev => ({...prev, skills: e.target.value}))} 
+                  rows={3}
+                  className="rounded-xl border-primary/5 resize-none"
+                />
+              </div>
+            </CardContent>
+          </ScrollArea>
         </Card>
 
-        <div className="flex gap-2">
-           <Button onClick={() => handlePrint()} className="flex-1" variant="secondary">
-              <Printer className="w-4 h-4 mr-2" />
-              Download PDF
+        <div className="flex flex-col gap-3">
+           <Button onClick={() => handlePrint()} className="w-full rounded-xl py-6 bg-secondary text-secondary-foreground hover:bg-secondary/80 font-bold tracking-tight shadow-lg shadow-secondary/20">
+              <Printer className="w-5 h-5 mr-3" />
+              Download High-Res PDF
            </Button>
-           <Button onClick={handleSave} disabled={saving} className="flex-1">
-              {saving ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Save className="w-4 h-4 mr-2" />}
-              Save Resume
+           <Button onClick={handleSave} disabled={saving} className="w-full rounded-xl py-6 font-bold tracking-tight shadow-lg shadow-primary/20">
+              {saving ? <Loader2 className="w-5 h-5 mr-3 animate-spin" /> : <Save className="w-5 h-5 mr-3" />}
+              Save Progress
            </Button>
         </div>
       </div>
 
       {/* Resume Preview */}
-      <div className="w-full lg:w-2/3 bg-gray-100 p-4 sm:p-8 rounded-xl overflow-auto flex justify-center border shadow-inner">
-         {/* A4 Size Ratio wrapper for rendering preview and print */}
+      <div className="flex-1 bg-secondary/10 p-4 sm:p-12 rounded-[2rem] border-2 border-dashed border-primary/10 min-h-[1000px] flex justify-center sticky top-8">
          <div 
            ref={resumeRef}
-           className="bg-white w-[210mm] min-h-[297mm] p-[20mm] shadow-md text-black print:shadow-none print:p-0"
-           style={{ fontFamily: activeTemplate === 'Classic' ? 'serif' : 'sans-serif' }}
+           className={`bg-white w-[210mm] min-h-[297mm] p-[25mm] shadow-2xl text-black print:shadow-none print:p-0 ring-1 ring-black/5 ${getTemplateStyles()}`}
          >
             <Header />
             
-            <Section title="Summary">
-               <p className="text-sm leading-relaxed">{data.personalInfo.summary}</p>
+            <Section title="Professional Summary">
+               <p className="leading-relaxed opacity-80">{data.personalInfo.summary}</p>
             </Section>
 
             <Section title="Experience">
-               <div className="space-y-4">
+               <div className="space-y-6">
                  {data.experience.map((exp) => (
-                    <div key={exp.id}>
-                       <div className="flex justify-between items-baseline mb-1">
-                          <h3 className="font-bold">{exp.role}</h3>
-                          <span className="text-sm text-gray-600">{exp.period}</span>
+                    <div key={exp.id} className="group">
+                       <div className="flex justify-between items-baseline mb-2">
+                          <h3 className="font-black text-lg group-hover:text-primary transition-colors">{exp.role}</h3>
+                          <span className="text-sm font-bold opacity-60 bg-secondary/30 px-2 py-0.5 rounded leading-none">{exp.period}</span>
                        </div>
-                       <div className="text-sm italic text-gray-700 mb-1">{exp.company}</div>
-                       <p className="text-sm leading-relaxed">{exp.description}</p>
+                       <div className={`text-sm font-bold mb-3 ${activeTemplate === 'Creative' ? 'text-indigo-600' : 'text-gray-500'}`}>
+                         {exp.company}
+                       </div>
+                       <p className="text-sm leading-relaxed opacity-70">{exp.description}</p>
                     </div>
                  ))}
                </div>
             </Section>
 
              <Section title="Education">
-               <div className="space-y-3">
+               <div className="space-y-4">
                  {data.education.map((edu) => (
-                    <div key={edu.id} className="flex justify-between items-baseline">
+                    <div key={edu.id} className="flex justify-between items-start">
                        <div>
-                          <h3 className="font-bold">{edu.degree}</h3>
-                          <div className="text-sm text-gray-700">{edu.school}</div>
+                          <h3 className="font-black">{edu.degree}</h3>
+                           <div className="text-sm opacity-60 font-medium">{edu.school}</div>
                        </div>
-                       <span className="text-sm text-gray-600">{edu.year}</span>
+                       <span className="text-sm font-bold opacity-40">{edu.year}</span>
                     </div>
                  ))}
                </div>
              </Section>
 
-             <Section title="Skills">
-                <p className="text-sm leading-relaxed">{data.skills}</p>
+             <Section title="Technical Expertise">
+                <div className="flex flex-wrap gap-2">
+                  {data.skills.split(',').map((skill, i) => (
+                    <span key={i} className="text-xs font-bold px-3 py-1 bg-secondary/20 rounded-full">
+                      {skill.trim()}
+                    </span>
+                  ))}
+                </div>
              </Section>
          </div>
       </div>

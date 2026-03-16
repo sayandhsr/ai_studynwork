@@ -3,6 +3,7 @@ import { TopNav } from "@/components/top-nav"
 import { SidebarProvider } from "@/components/ui/sidebar"
 import { createClient } from "@/lib/supabase/server"
 import { redirect } from "next/navigation"
+import { AIAssistant } from "@/components/dashboard/ai-assistant"
 
 export default async function DashboardLayout({
   children,
@@ -28,7 +29,7 @@ export default async function DashboardLayout({
 
   return (
     <SidebarProvider>
-      <div className="flex min-h-screen w-full bg-secondary/20">
+      <div className="flex min-h-screen w-full bg-secondary/20 relative">
         <AppSidebar />
         <div className="flex flex-1 flex-col overflow-hidden">
           <TopNav user={profile} />
@@ -38,6 +39,7 @@ export default async function DashboardLayout({
             </div>
           </main>
         </div>
+        <AIAssistant />
       </div>
     </SidebarProvider>
   )
