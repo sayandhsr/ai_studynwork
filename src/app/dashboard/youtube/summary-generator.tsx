@@ -24,13 +24,13 @@ export function SummaryGenerator() {
     e.preventDefault()
     
     if (mode === "auto") {
-      if (!url.trim() || !url.includes("youtube.com") && !url.includes("youtu.be")) {
-        setError("Please enter a valid YouTube URL")
+      if (!url.trim() || !url.toLowerCase().includes("yout")) {
+        setError("Please enter a valid YouTube link")
         return
       }
     } else {
-      if (!manualTranscript.trim() || manualTranscript.length < 50) {
-        setError("Please paste a transcript (at least 50 characters)")
+      if (!manualTranscript.trim() || manualTranscript.length < 10) {
+        setError("Please paste a transcript or key text")
         return
       }
     }

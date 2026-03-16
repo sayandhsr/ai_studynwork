@@ -1,11 +1,20 @@
 import { NextResponse } from "next/server"
 import { createClient } from "@/lib/supabase/server"
 
-// A very basic YouTube ID extractor
+// Robust YouTube ID extraction (Shorts, Live, Embed, Mobile support)
 function extractVideoId(url: string) {
-  const regExp = /^.*((youtu.be\/)|(v\/)|(\/u\/\w\/)|(embed\/)|(watch\?))\??v?=?([^#&?]*).*/;
-  const match = url.match(regExp);
-  return (match && match[7].length == 11) ? match[7] : false;
+  const patterns = [
+    /(?:v=|\/v\/|embed\/|shorts\/|youtu\.be\/|\/v=|^)([^#&?]{11})/,
+    /youtube\.com\/live\/([^#&?]{11})/,
+    /youtube\.com\/watch\?.*v=([^#&?]{11})/,
+    /m\.youtube\.com\/watch\?v=([^#&?]{11})/
+  ];
+
+  for (const pattern of patterns) {
+    const match = url.match(pattern);
+    if (match && match[1]) return match[1];
+  }
+  return false;
 }
 
 export async function POST(req: Request) {
@@ -29,7 +38,6 @@ export async function POST(req: Request) {
     // --- AUTOMATIC FETCHING (ONLY IF NO MANUAL TRANSCRIPT) ---
     if (!transcriptText && videoId) {
       const rapidApiKey = process.env.RAPIDAPI_KEY;
-      let metadataInfo = "";
 
       if (rapidApiKey) {
         // Fallback 1: youtube-transcript3
@@ -47,7 +55,7 @@ export async function POST(req: Request) {
           }
         } catch (err) {}
 
-        // Fallback 2: subtitles-for-youtube (different provider)
+        // Fallback 2: subtitles-for-youtube
         if (!transcriptText) {
           try {
             console.log(`[YT API] Attempt 2: Fetching via subtitles-for-youtube for: ${videoId}`);
@@ -63,7 +71,7 @@ export async function POST(req: Request) {
           } catch (err) {}
         }
 
-        // Fallback 3: Supadata (High Performance AI fallback)
+        // Fallback 3: Supadata (AI Fallback)
         if (!transcriptText) {
           try {
             console.log(`[YT API] Attempt 3: Fetching via Supadata (AI Fallback) for: ${videoId}`);
@@ -82,11 +90,11 @@ export async function POST(req: Request) {
       }
 
       // --- ROBUST FALLBACK (FIRECRAWL DEEP SCRAPE) ---
-      // This is crucial for videos WITHOUT captions but with descriptions/rich metadata
+      // Crucial for Metadata-Only Inference
       if (!transcriptText || transcriptText.length < 50) {
         const firecrawlKey = process.env.FIRECRAWL_API_KEY;
         if (firecrawlKey) {
-          console.log(`[YT API] Transcript unavailable. Final attempt via Firecrawl Deep-Scrape for: ${videoId}`);
+          console.log(`[YT API] Transcript unavailable. Final attempt via Firecrawl Metadata Extraction for: ${videoId}`);
           try {
             const firecrawlRes = await fetch("https://api.firecrawl.dev/v1/scrape", {
               method: "POST",
@@ -94,7 +102,7 @@ export async function POST(req: Request) {
               body: JSON.stringify({
                 url: `https://www.youtube.com/watch?v=${videoId}`,
                 formats: ["markdown", "metadata"],
-                waitFor: 3000 // Increased wait for heavy YT pages
+                waitFor: 4000 
               })
             });
 
@@ -105,9 +113,9 @@ export async function POST(req: Request) {
                 const title = fcData.data.metadata?.title || "";
                 const description = fcData.data.metadata?.description || "";
                 
-                if (title || description || content.length > 500) {
-                   transcriptText = `DEEP CONTEXT ANALYSIS (No Transcript Found):\n\nVideo Title: ${title}\n\nVideo Description:\n${description}\n\nExtracted Content Snippets:\n${content.substring(0, 8000)}`;
-                   console.log(`[YT API] Harvested rich metadata (${transcriptText.length} chars). Continuing with AI Analysis.`);
+                if (title || description) {
+                   transcriptText = `UNIVERSAL METADATA INFERENCE (No Transcript Available):\n\nVideo Title: ${title}\n\nVideo Description:\n${description}\n\nPage Context:\n${content.substring(0, 5000)}`;
+                   console.log(`[YT API] Harvested deep metadata. Switching to AI Inference.`);
                 }
               }
             }
@@ -116,14 +124,14 @@ export async function POST(req: Request) {
       }
     }
 
-    // Final check for content
-    if (!transcriptText || transcriptText.length < 20) {
+    // Final check for content - relaxed character limit (metadata is shorter but valid)
+    if (!transcriptText || transcriptText.length < 5) {
       return NextResponse.json({ 
-        error: "Privacy / Age Restriction: This video is locked by Google. I cannot access private or age-restricted videos automatically. \n\nFIX: Click 'Manual Mode' above and paste the transcript manually (Instructions: Open video on YouTube -> Click '... More' -> 'Show Transcript')." 
+        error: "Privacy Lock Detected: This video is private or restricted. \n\nFIX: If you have access, click 'Manual Mode' and paste the transcript manually." 
       }, { status: 400 });
     }
 
-    console.log(`[YT API] Content ready for AI processing. Length: ${transcriptText.length} characters`);
+    console.log(`[YT API] Starting AI Summarization. Mode: ${transcriptText.includes("UNIVERSAL METADATA INFERENCE") ? "Inference" : "Direct"}`);
 
     const openRouterApiKey = process.env.OPENROUTER_API_KEY
     if (!openRouterApiKey) {
@@ -139,7 +147,7 @@ export async function POST(req: Request) {
     let summary = ""
     let lastError = ""
 
-    const isMetadataOnly = transcriptText.includes("DEEP CONTEXT ANALYSIS");
+    const isMetadataOnly = transcriptText.includes("UNIVERSAL METADATA INFERENCE");
 
     for (const model of models) {
       try {
