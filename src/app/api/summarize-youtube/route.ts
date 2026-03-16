@@ -10,15 +10,10 @@ function extractVideoId(url: string) {
 
 export async function POST(req: Request) {
   try {
-    const { url } = await req.json()
+    const { url, manualTranscript } = await req.json()
 
-    if (!url) {
-      return NextResponse.json({ error: "URL is required" }, { status: 400 })
-    }
-
-    const videoId = extractVideoId(url)
-    if (!videoId) {
-      return NextResponse.json({ error: "Invalid YouTube URL" }, { status: 400 })
+    if (!url && !manualTranscript) {
+      return NextResponse.json({ error: "URL or transcript is required" }, { status: 400 })
     }
 
     const supabase = await createClient()
@@ -28,80 +23,75 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Authentication required" }, { status: 401 })
     }
 
-    // --- ROBUST TRANSCRIPT FETCHING (RAPIDAPI) ---
-    let transcriptText = ""
-    const rapidApiKey = process.env.RAPIDAPI_KEY;
+    let transcriptText = manualTranscript || ""
+    const videoId = url ? extractVideoId(url) : null
 
-    if (!rapidApiKey) {
-      return NextResponse.json({ error: "RapidAPI Key not configured" }, { status: 500 });
-    }
-
-    try {
-      console.log(`[YT API] Fetching transcript via RapidAPI for: ${videoId}`);
-      const rapidApiRes = await fetch(`https://youtube-transcript3.p.rapidapi.com/api/transcript-with-timestamps?video_id=${videoId}`, {
-        method: "GET",
-        headers: {
-          "x-rapidapi-key": rapidApiKey,
-          "x-rapidapi-host": "youtube-transcript3.p.rapidapi.com"
-        }
-      });
-
-      if (rapidApiRes.ok) {
-        const rapidData = await rapidApiRes.json();
-        // The API returns an array of segments: { text: "...", start: 0, duration: 0 }
-        if (rapidData.transcript && Array.isArray(rapidData.transcript)) {
-          transcriptText = rapidData.transcript.map((s: any) => s.text).join(" ");
-          console.log(`[YT API] RapidAPI success! Fetched ${transcriptText.length} chars.`);
-        }
-      } else {
-        const errText = await rapidApiRes.text();
-        console.error(`[YT API] RapidAPI Error (${rapidApiRes.status}):`, errText);
-      }
-    } catch (err: any) {
-      console.error("[YT API] RapidAPI connection error:", err.message);
-    }
-
-    // --- ROBUST FALLBACK (FIRECRAWL DEEP SCRAPE) ---
-    if (!transcriptText || transcriptText.length < 50) {
-      const firecrawlKey = process.env.FIRECRAWL_API_KEY;
-      if (firecrawlKey) {
-        console.log(`[YT API] Transcript unavailable. Deep-scraping via Firecrawl for: ${videoId}`);
+    // --- AUTOMATIC FETCHING (ONLY IF NO MANUAL TRANSCRIPT) ---
+    if (!transcriptText && videoId) {
+      const rapidApiKey = process.env.RAPIDAPI_KEY;
+      if (rapidApiKey) {
         try {
-          const firecrawlRes = await fetch("https://api.firecrawl.dev/v1/scrape", {
-            method: "POST",
+          console.log(`[YT API] Fetching transcript via RapidAPI for: ${videoId}`);
+          const rapidApiRes = await fetch(`https://youtube-transcript3.p.rapidapi.com/api/transcript-with-timestamps?video_id=${videoId}`, {
+            method: "GET",
             headers: {
-              "Authorization": `Bearer ${firecrawlKey}`,
-              "Content-Type": "application/json"
-            },
-            body: JSON.stringify({
-              url: `https://www.youtube.com/watch?v=${videoId}`,
-              formats: ["markdown", "metadata"]
-            })
+              "x-rapidapi-key": rapidApiKey,
+              "x-rapidapi-host": "youtube-transcript3.p.rapidapi.com"
+            }
           });
 
-          if (firecrawlRes.ok) {
-            const fcData = await firecrawlRes.json();
-            if (fcData.success && fcData.data) {
-              const content = fcData.data.markdown || "";
-              const title = fcData.data.metadata?.title || "Unknown Video";
-              const description = fcData.data.metadata?.description || "";
-              
-              transcriptText = `DEEP SCRAPE CONTEXT (TRANSCRIPT UNAVAILABLE):\nTitle: ${title}\nDescription: ${description}\n\nPage Content:\n${content.substring(0, 5000)}`; // Caps at 5k to prevent token bloat
-              console.log(`[YT API] Firecrawl success! Fetched ${transcriptText.length} chars.`);
+          if (rapidApiRes.ok) {
+            const rapidData = await rapidApiRes.json();
+            if (rapidData.transcript && Array.isArray(rapidData.transcript)) {
+              transcriptText = rapidData.transcript.map((s: any) => s.text).join(" ");
+              console.log(`[YT API] RapidAPI success! Fetched ${transcriptText.length} chars.`);
             }
-          } else {
-            console.error(`[YT API] Firecrawl Error (${firecrawlRes.status})`);
           }
-        } catch (fcErr: any) {
-          console.error("[YT API] Firecrawl connection failed:", fcErr.message);
+        } catch (err: any) {
+          console.error("[YT API] RapidAPI connection error:", err.message);
+        }
+      }
+
+      // --- ROBUST FALLBACK (FIRECRAWL DEEP SCRAPE) ---
+      if (!transcriptText || transcriptText.length < 50) {
+        const firecrawlKey = process.env.FIRECRAWL_API_KEY;
+        if (firecrawlKey) {
+          console.log(`[YT API] Transcript unavailable. Deep-scraping via Firecrawl for: ${videoId}`);
+          try {
+            const firecrawlRes = await fetch("https://api.firecrawl.dev/v1/scrape", {
+              method: "POST",
+              headers: {
+                "Authorization": `Bearer ${firecrawlKey}`,
+                "Content-Type": "application/json"
+              },
+              body: JSON.stringify({
+                url: `https://www.youtube.com/watch?v=${videoId}`,
+                formats: ["markdown", "metadata"]
+              })
+            });
+
+            if (firecrawlRes.ok) {
+              const fcData = await firecrawlRes.json();
+              if (fcData.success && fcData.data) {
+                const content = fcData.data.markdown || "";
+                const title = fcData.data.metadata?.title || "Unknown Video";
+                const description = fcData.data.metadata?.description || "";
+                
+                transcriptText = `DEEP SCRAPE CONTEXT (TRANSCRIPT UNAVAILABLE):\nTitle: ${title}\nDescription: ${description}\n\nPage Content:\n${content.substring(0, 5000)}`;
+                console.log(`[YT API] Firecrawl success! Fetched ${transcriptText.length} chars.`);
+              }
+            }
+          } catch (fcErr: any) {
+            console.error("[YT API] Firecrawl connection failed:", fcErr.message);
+          }
         }
       }
     }
 
-    // Final sanity check
+    // Final check for content
     if (!transcriptText || transcriptText.length < 20) {
       return NextResponse.json({ 
-        error: "Failed to extract video information. Even the deep-scrape was unsuccessful. Please check if the video is private or restricted." 
+        error: "We couldn't fetch the video content automatically (it might be private or restricted). Please use 'Manual Mode' and paste the transcript or description for a better summary." 
       }, { status: 400 });
     }
 
@@ -112,12 +102,11 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "AI service not configured" }, { status: 500 })
     }
 
-    // Call OpenRouter with fallback logic (Prioritizing Grok as requested)
+    // Call OpenRouter
     const models = [
       "x-ai/grok-beta",
       "deepseek/deepseek-chat", 
-      "google/gemini-flash-1.5:free", 
-      "meta-llama/llama-3.1-8b-instruct:free"
+      "google/gemini-flash-1.5:free"
     ]
     let summary = ""
     let lastError = ""
@@ -139,35 +128,29 @@ export async function POST(req: Request) {
                 content: `You are an expert content analyzer and educator. 
                 Your goal is to provide a deep, readable, and context-rich study of the provided content.
                 - If the content is a transcript: Extract the core arguments, step-by-step logic, and key wisdom.
-                - If the content is from a page scrape (No Transcript): Analyze the Title, Description, and available page text to reconstruct the video's likely message and value. Start by saying "Summary based on video context and metadata."
+                - If the content is from a page scrape or manual text: Analyze the provided information to provide a deep study. If it's metadata, note it in the first sentence.
                 Format professionally using Markdown. Use bold headers, bullet points, and a 'Core Insights' section.` 
               },
               { role: "user", content: `Please provide a detailed study of this content:\n\n${transcriptText}` }
             ]
           }),
-          signal: AbortSignal.timeout(60000) // 1 minute timeout
+          signal: AbortSignal.timeout(60000)
         })
 
-        if (!openRouterRes.ok) {
-          const errBody = await openRouterRes.text()
-          console.warn(`Model ${model} failed (${openRouterRes.status}):`, errBody)
-          lastError = `Model ${model} error: ${openRouterRes.status}`
-          continue 
-        }
-
-        const data = await openRouterRes.json()
-        if (data.choices && data.choices.length > 0) {
-          summary = data.choices[0].message.content
-          break 
+        if (openRouterRes.ok) {
+          const data = await openRouterRes.json()
+          if (data.choices && data.choices.length > 0) {
+            summary = data.choices[0].message.content
+            break 
+          }
         }
       } catch (err: any) {
-        console.warn(`Request for ${model} failed:`, err.message)
         lastError = err.message
       }
     }
 
     if (!summary) {
-      throw new Error(`AI Providers failed to generate summary. Last error: ${lastError}`)
+      throw new Error(`AI Providers failed to generate summary. ${lastError}`)
     }
 
     // Save to database
@@ -176,14 +159,13 @@ export async function POST(req: Request) {
       .insert([
         { 
           user_id: user.id, 
-          video_url: url, 
+          video_url: url || "Manual Entry", 
           summary: summary 
         }
       ])
 
     if (dbError) {
       console.error("Database Save Error:", dbError)
-      // We still return the summary even if save fails
     }
 
     return NextResponse.json({ summary })

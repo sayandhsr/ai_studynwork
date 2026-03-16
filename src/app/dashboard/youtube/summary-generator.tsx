@@ -8,29 +8,43 @@ import { Input } from "@/components/ui/input"
 import { Card, CardContent } from "@/components/ui/card"
 import { Youtube, Wand2, Loader2 } from "lucide-react"
 
+import { Textarea } from "@/components/ui/textarea"
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
+
 export function SummaryGenerator() {
   const router = useRouter()
   const supabase = createClient()
   const [url, setUrl] = useState("")
+  const [manualTranscript, setManualTranscript] = useState("")
+  const [mode, setMode] = useState<"auto" | "manual">("auto")
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState("")
 
   const handleGenerate = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!url.trim() || !url.includes("youtube.com") && !url.includes("youtu.be")) {
-      setError("Please enter a valid YouTube URL")
-      return
+    
+    if (mode === "auto") {
+      if (!url.trim() || !url.includes("youtube.com") && !url.includes("youtu.be")) {
+        setError("Please enter a valid YouTube URL")
+        return
+      }
+    } else {
+      if (!manualTranscript.trim() || manualTranscript.length < 50) {
+        setError("Please paste a transcript (at least 50 characters)")
+        return
+      }
     }
 
     setError("")
     setLoading(true)
 
     try {
-      // Create summary via internal API handler executing OpenRouter request
+      const payload = mode === "auto" ? { url } : { manualTranscript }
+      
       const response = await fetch("/api/summarize-youtube", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ url }),
+        body: JSON.stringify(payload),
       })
 
       const data = await response.json()
@@ -39,17 +53,8 @@ export function SummaryGenerator() {
         throw new Error(data.error || "Failed to generate summary")
       }
 
-      // Save to Supabase
-      const { data: { user } } = await supabase.auth.getUser()
-      if (user) {
-         await supabase.from("yt_summaries").insert([{
-           user_id: user.id,
-           video_url: url,
-           summary: data.summary
-         }])
-      }
-
       setUrl("")
+      setManualTranscript("")
       router.refresh()
     } catch (err: any) {
       setError(err.message || "An unexpected error occurred.")
@@ -61,23 +66,52 @@ export function SummaryGenerator() {
   return (
     <Card className="border shadow-sm bg-card/50">
       <CardContent className="p-6">
-        <form onSubmit={handleGenerate} className="flex flex-col sm:flex-row gap-3">
-          <div className="relative flex-1">
-            <Youtube className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-            <Input
-              value={url}
-              onChange={(e) => setUrl(e.target.value)}
-              placeholder="Paste YouTube Video URL (e.g. https://www.youtube.com/watch?v=...)"
-              className="pl-9 h-10"
-              disabled={loading}
-            />
-          </div>
-          <Button type="submit" disabled={loading || !url} className="h-10 gap-2 shrink-0">
-            {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Wand2 className="h-4 w-4" />}
-            {loading ? "Generating..." : "Generate Summary"}
-          </Button>
-        </form>
-        {error && <p className="text-sm text-destructive mt-2">{error}</p>}
+        <div className="flex flex-col gap-6">
+          <Tabs value={mode} onValueChange={(v) => setMode(v as any)} className="w-full">
+            <TabsList className="grid w-full grid-cols-2 max-w-[400px]">
+              <TabsTrigger value="auto" className="gap-2">
+                <Youtube className="w-4 h-4" /> Auto Mode
+              </TabsTrigger>
+              <TabsTrigger value="manual" className="gap-2">
+                <Wand2 className="w-4 h-4" /> Manual Mode
+              </TabsTrigger>
+            </TabsList>
+          </Tabs>
+
+          <form onSubmit={handleGenerate} className="flex flex-col gap-4">
+            {mode === "auto" ? (
+              <div className="relative">
+                <Youtube className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                <Input
+                  value={url}
+                  onChange={(e) => setUrl(e.target.value)}
+                  placeholder="Paste YouTube Video URL (e.g. https://www.youtube.com/watch?v=...)"
+                  className="pl-9 h-11 rounded-xl"
+                  disabled={loading}
+                />
+              </div>
+            ) : (
+              <div className="space-y-2">
+                <Textarea
+                  value={manualTranscript}
+                  onChange={(e) => setManualTranscript(e.target.value)}
+                  placeholder="Paste the video transcript or key text here..."
+                  className="min-h-[150px] rounded-xl resize-none"
+                  disabled={loading}
+                />
+                <p className="text-[10px] text-muted-foreground italic px-1">
+                  Tip: Copy transcripts from YouTube's "Show Transcript" sidebar.
+                </p>
+              </div>
+            )}
+            
+            <Button type="submit" disabled={loading || (mode === "auto" ? !url : !manualTranscript)} className="h-11 gap-2 rounded-xl bg-primary hover:bg-primary/90 transition-all font-semibold">
+              {loading ? <Loader2 className="h-5 w-5 animate-spin" /> : <Wand2 className="h-5 w-5" />}
+              {loading ? "Processing..." : "Generate AI Insights"}
+            </Button>
+          </form>
+        </div>
+        {error && <p className="text-sm text-destructive mt-3 font-medium bg-destructive/10 p-3 rounded-lg border border-destructive/20">{error}</p>}
       </CardContent>
     </Card>
   )
