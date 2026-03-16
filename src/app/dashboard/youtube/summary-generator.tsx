@@ -105,9 +105,14 @@ export function SummaryGenerator() {
               </div>
             )}
             
-            <Button type="submit" disabled={loading || (mode === "auto" ? !url : !manualTranscript)} className="h-11 gap-2 rounded-xl bg-primary hover:bg-primary/90 transition-all font-semibold">
+            <Button type="submit" disabled={loading || (mode === "auto" ? !url : !manualTranscript)} className="h-11 gap-2 rounded-xl bg-primary hover:bg-primary/90 transition-all font-semibold relative overflow-hidden">
               {loading ? <Loader2 className="h-5 w-5 animate-spin" /> : <Wand2 className="h-5 w-5" />}
-              {loading ? "Processing..." : "Generate AI Insights"}
+              {loading ? (
+                <div className="flex flex-col items-start leading-tight">
+                  <span className="text-sm">Processing...</span>
+                  <span className="text-[10px] opacity-70 animate-pulse">Deep AI Analysis Running</span>
+                </div>
+              ) : "Generate AI Insights"}
             </Button>
           </form>
         </div>

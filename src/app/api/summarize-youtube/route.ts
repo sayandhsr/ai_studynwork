@@ -62,6 +62,23 @@ export async function POST(req: Request) {
             }
           } catch (err) {}
         }
+
+        // Fallback 3: Supadata (High Performance AI fallback)
+        if (!transcriptText) {
+          try {
+            console.log(`[YT API] Attempt 3: Fetching via Supadata (AI Fallback) for: ${videoId}`);
+            const supadataRes = await fetch(`https://youtube-transcripts.p.rapidapi.com/transcript?url=https://www.youtube.com/watch?v=${videoId}`, {
+              headers: { "x-rapidapi-key": rapidApiKey, "x-rapidapi-host": "youtube-transcripts.p.rapidapi.com" }
+            });
+            if (supadataRes.ok) {
+              const supadataData = await supadataRes.json();
+              if (supadataData.content || supadataData.transcript) {
+                 transcriptText = supadataData.content || supadataData.transcript;
+                 console.log("[YT API] Supadata AI successfully generated content.");
+              }
+            }
+          } catch (err) {}
+        }
       }
 
       // --- ROBUST FALLBACK (FIRECRAWL DEEP SCRAPE) ---
