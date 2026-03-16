@@ -1,5 +1,4 @@
 import { NextResponse } from "next/server"
-import { execSync } from "child_process"
 import { createClient } from "@/lib/supabase/server"
 
 // A very basic YouTube ID extractor
@@ -29,29 +28,68 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Authentication required" }, { status: 401 })
     }
 
-    // --- ROBUST TRANSCRIPT FETCHING (PYTHON BRIDGE) ---
+    // --- ROBUST TRANSCRIPT FETCHING (RAPIDAPI) ---
     let transcriptText = ""
-    console.log(`[YT API] Starting Python fetch for: ${videoId}`)
+    const rapidApiKey = process.env.RAPIDAPI_KEY;
 
-    try {
-      // Use python -m youtube_transcript_api to avoid PATH issues
-      // The --format text option gives us clean concatenated text
-      const command = `python -m youtube_transcript_api ${videoId} --format text`
-      const output = execSync(command, { encoding: 'utf8' })
-      
-      transcriptText = output.trim()
-      
-      if (transcriptText.length > 50) {
-        console.log(`[YT API] Python success! Fetched ${transcriptText.length} chars.`)
-      }
-    } catch (err: any) {
-      console.error("[YT API] Python bridge failed:", err.message)
+    if (!rapidApiKey) {
+      return NextResponse.json({ error: "RapidAPI Key not configured" }, { status: 500 });
     }
 
-    // Check if we ultimately got something
+    try {
+      console.log(`[YT API] Fetching transcript via RapidAPI for: ${videoId}`);
+      const rapidApiRes = await fetch(`https://youtube-transcript3.p.rapidapi.com/api/transcript-with-timestamps?video_id=${videoId}`, {
+        method: "GET",
+        headers: {
+          "x-rapidapi-key": rapidApiKey,
+          "x-rapidapi-host": "youtube-transcript3.p.rapidapi.com"
+        }
+      });
+
+      if (rapidApiRes.ok) {
+        const rapidData = await rapidApiRes.json();
+        // The API returns an array of segments: { text: "...", start: 0, duration: 0 }
+        if (rapidData.transcript && Array.isArray(rapidData.transcript)) {
+          transcriptText = rapidData.transcript.map((s: any) => s.text).join(" ");
+          console.log(`[YT API] RapidAPI success! Fetched ${transcriptText.length} chars.`);
+        }
+      } else {
+        const errText = await rapidApiRes.text();
+        console.error(`[YT API] RapidAPI Error (${rapidApiRes.status}):`, errText);
+      }
+    } catch (err: any) {
+      console.error("[YT API] RapidAPI connection error:", err.message);
+    }
+
+    // --- METADATA FALLBACK ---
     if (!transcriptText || transcriptText.length < 50) {
+      console.log(`[YT API] Transcript unavailable. Fetching metadata for: ${videoId}`);
+      try {
+        const videoUrl = `https://www.youtube.com/watch?v=${videoId}`;
+        const metaRes = await fetch(videoUrl, {
+          headers: {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+          }
+        });
+        const html = await metaRes.text();
+        
+        const titleMatch = html.match(/<title>(.*?) - YouTube<\/title>/);
+        const descMatch = html.match(/<meta name="description" content="(.*?)">/);
+        
+        const title = titleMatch ? titleMatch[1] : "Unknown Title";
+        const description = descMatch ? descMatch[1] : "No description available.";
+        
+        transcriptText = `VIDEO METADATA (TRANSCRIPT UNAVAILABLE):\nTitle: ${title}\nDescription: ${description}`;
+        console.log(`[YT API] Metadata fallback success: ${title}`);
+      } catch (metaErr: any) {
+        console.error("[YT API] Metadata fallback failed:", metaErr.message);
+      }
+    }
+
+    // Final sanity check
+    if (!transcriptText || transcriptText.length < 20) {
       return NextResponse.json({ 
-        error: "Failed to extract transcript. Please ensure subtitles/captions are available on YouTube for this video." 
+        error: "Failed to extract any video information. Even the video metadata is unreachable. Please try a different video." 
       }, { status: 400 });
     }
 
@@ -62,12 +100,12 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "AI service not configured" }, { status: 500 })
     }
 
-    // Call OpenRouter with fallback logic (Prioritizing DeepSeek as requested)
+    // Call OpenRouter with fallback logic (Prioritizing Grok as requested)
     const models = [
+      "x-ai/grok-beta",
       "deepseek/deepseek-chat", 
       "google/gemini-flash-1.5:free", 
-      "meta-llama/llama-3.1-8b-instruct:free",
-      "x-ai/grok-beta"
+      "meta-llama/llama-3.1-8b-instruct:free"
     ]
     let summary = ""
     let lastError = ""
@@ -84,8 +122,14 @@ export async function POST(req: Request) {
           body: JSON.stringify({
             model: model, 
             messages: [
-              { role: "system", content: "You are an expert content summarizer. Provide a concise summary, key points, and bulleted highlights of the given YouTube transcript. Format the output professionally using Markdown." },
-              { role: "user", content: `Please summarize this transcript (or video content):\n\n${transcriptText}` }
+              { 
+                role: "system", 
+                content: `You are an expert content summarizer. 
+                - If the user provides a transcript, provide a concise summary, key points, and bulleted highlights.
+                - If the user provides metadata (Title/Description) because a transcript was unavailable, provide the best possible summary and insights based on that metadata. Start by mentioning: "Note: Full transcript was unavailable; summary based on video metadata."
+                Format the output professionally using Markdown.` 
+              },
+              { role: "user", content: `Please summarize this content:\n\n${transcriptText}` }
             ]
           }),
           signal: AbortSignal.timeout(60000) // 1 minute timeout
