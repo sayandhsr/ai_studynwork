@@ -48,13 +48,20 @@ export function AIAssistant() {
         })
       })
 
-      if (!response.ok) throw new Error("API failure")
-
       const data = await response.json()
-      const aiContent = data.choices?.[0]?.message?.content || "I'm sorry, I'm having trouble connecting right now."
+
+      if (!response.ok) {
+        throw new Error(data.error || "Failed to reach AI")
+      }
+
+      const aiContent = data.choices?.[0]?.message?.content || "I'm sorry, I'm having trouble processing that right now."
       setMessages(prev => [...prev, { role: "assistant", content: aiContent }])
-    } catch (error) {
-      setMessages(prev => [...prev, { role: "assistant", content: "Error connecting to AI service. Please try again later." }])
+    } catch (error: any) {
+      console.error("Chat Error:", error)
+      setMessages(prev => [...prev, { 
+        role: "assistant", 
+        content: `⚠️ Assistant sync error: ${error.message}. Please check your connection or API configuration.` 
+      }])
     } finally {
       setIsLoading(false)
     }

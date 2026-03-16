@@ -23,17 +23,25 @@ export async function POST(req: Request) {
       try {
         console.log(`[Assistant] Attempting with model: ${model}`)
         
-        // Ensure the sequence is System -> User -> Assistant -> User ...
         const chatMessages = [
           { role: "system", content: "You are a helpful assistant for an AI Productivity Hub. You help users with YouTube summaries, resume building, and taking notes. Be concise and friendly." }
         ]
 
-        // Only add previous messages if they follow the correct pattern
+        // CRITICAL: Sequence must be System -> User -> Assistant -> User ...
+        // We skip any leading assistant messages from the history
+        let hasFirstUser = false
         messages.forEach((msg: any) => {
-          if (msg.role === "user" || msg.role === "assistant") {
-            chatMessages.push({ role: msg.role, content: msg.content })
+          if (msg.role === "user") hasFirstUser = true
+          if (hasFirstUser && (msg.role === "user" || msg.role === "assistant")) {
+            chatMessages.push({ role: msg.role.toLowerCase(), content: msg.content })
           }
         })
+
+        // If for some reason we still have no messages, don't waste an API call
+        if (chatMessages.length === 1) {
+            console.error("[Assistant] No user messages found to send")
+            continue
+        }
 
         const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
           method: "POST",
@@ -54,17 +62,22 @@ export async function POST(req: Request) {
           const data = await response.json()
           if (data.choices?.[0]?.message?.content) {
             aiResponse = data
+            console.log(`[Assistant] ${model} success!`)
             break
           }
+        } else {
+          const errorText = await response.text()
+          console.error(`[Assistant] ${model} error (${response.status}):`, errorText)
+          lastError = `Status ${response.status}: ${errorText}`
         }
       } catch (err: any) {
         lastError = err.message
-        console.error(`[Assistant] ${model} failed: ${err.message}`)
+        console.error(`[Assistant] ${model} catch: ${err.message}`)
       }
     }
 
     if (!aiResponse) {
-      throw new Error(`All AI models failed. ${lastError}`)
+      throw new Error(`All AI models failed. Last error: ${lastError}`)
     }
 
     return NextResponse.json(aiResponse)
