@@ -29,6 +29,8 @@ export async function POST(req: Request) {
     // --- AUTOMATIC FETCHING (ONLY IF NO MANUAL TRANSCRIPT) ---
     if (!transcriptText && videoId) {
       const rapidApiKey = process.env.RAPIDAPI_KEY;
+      let metadataInfo = "";
+
       if (rapidApiKey) {
         // Fallback 1: youtube-transcript3
         try {
@@ -63,6 +65,7 @@ export async function POST(req: Request) {
       }
 
       // --- ROBUST FALLBACK (FIRECRAWL DEEP SCRAPE) ---
+      // This is crucial for videos WITHOUT captions but with descriptions/rich metadata
       if (!transcriptText || transcriptText.length < 50) {
         const firecrawlKey = process.env.FIRECRAWL_API_KEY;
         if (firecrawlKey) {
@@ -74,7 +77,7 @@ export async function POST(req: Request) {
               body: JSON.stringify({
                 url: `https://www.youtube.com/watch?v=${videoId}`,
                 formats: ["markdown", "metadata"],
-                waitFor: 2000 // Give time for dynamic elements to load
+                waitFor: 3000 // Increased wait for heavy YT pages
               })
             });
 
@@ -85,9 +88,9 @@ export async function POST(req: Request) {
                 const title = fcData.data.metadata?.title || "";
                 const description = fcData.data.metadata?.description || "";
                 
-                // Even if we only get metadata, it's better than nothing
-                if (title || description) {
-                   transcriptText = `VIDEO METADATA & CONTENT:\nTitle: ${title}\nDescription: ${description}\n\nPage Content Summary:\n${content.substring(0, 5000)}`;
+                if (title || description || content.length > 500) {
+                   transcriptText = `DEEP CONTEXT ANALYSIS (No Transcript Found):\n\nVideo Title: ${title}\n\nVideo Description:\n${description}\n\nExtracted Content Snippets:\n${content.substring(0, 8000)}`;
+                   console.log(`[YT API] Harvested rich metadata (${transcriptText.length} chars). Continuing with AI Analysis.`);
                 }
               }
             }
@@ -99,7 +102,7 @@ export async function POST(req: Request) {
     // Final check for content
     if (!transcriptText || transcriptText.length < 20) {
       return NextResponse.json({ 
-        error: "Automatic fetching failed. This video might be private, restricted, or have disabled captions. Please click 'Manual Mode' above and paste the transcript (found under 'Show Transcript' on YouTube) to get your summary." 
+        error: "Privacy / Age Restriction: This video is locked by Google. I cannot access private or age-restricted videos automatically. \n\nFIX: Click 'Manual Mode' above and paste the transcript manually (Instructions: Open video on YouTube -> Click '... More' -> 'Show Transcript')." 
       }, { status: 400 });
     }
 
@@ -112,12 +115,14 @@ export async function POST(req: Request) {
 
     // Call OpenRouter
     const models = [
-      "x-ai/grok-beta",
-      "deepseek/deepseek-chat", 
-      "google/gemini-flash-1.5:free"
+      "google/gemini-flash-1.5:free",
+      "deepseek/deepseek-chat",
+      "x-ai/grok-beta"
     ]
     let summary = ""
     let lastError = ""
+
+    const isMetadataOnly = transcriptText.includes("DEEP CONTEXT ANALYSIS");
 
     for (const model of models) {
       try {
@@ -127,16 +132,18 @@ export async function POST(req: Request) {
           headers: {
             "Authorization": `Bearer ${openRouterApiKey}`,
             "Content-Type": "application/json",
+            "HTTP-Referer": "https://ai-productivity-hub.vercel.app",
+            "X-Title": "AI Productivity Hub"
           },
           body: JSON.stringify({
             model: model, 
             messages: [
               { 
                 role: "system", 
-                content: `You are an expert content analyzer and educator. 
-                Your goal is to provide a deep, readable, and context-rich study of the provided content.
-                - If the content is a transcript: Extract the core arguments, step-by-step logic, and key wisdom.
-                - If the content is from a page scrape or manual text: Analyze the provided information to provide a deep study. If it's metadata, note it in the first sentence.
+                content: `You are an expert content analyzer. 
+                ${isMetadataOnly 
+                  ? "NOTICE: This video has NO CAPTIONS. Use the provided Title, Description, and Page snippets to reconstruct the video's core message and provide a detailed study." 
+                  : "Your goal is to provide a deep, readable, and context-rich study of the provided transcript."}
                 Format professionally using Markdown. Use bold headers, bullet points, and a 'Core Insights' section.` 
               },
               { role: "user", content: `Please provide a detailed study of this content:\n\n${transcriptText}` }

@@ -111,7 +111,27 @@ export function SummaryGenerator() {
             </Button>
           </form>
         </div>
-        {error && <p className="text-sm text-destructive mt-3 font-medium bg-destructive/10 p-3 rounded-lg border border-destructive/20">{error}</p>}
+        {error && (
+          <div className="mt-4 p-4 rounded-xl bg-destructive/5 border border-destructive/20 space-y-3 font-sans">
+            <p className="text-sm font-bold text-destructive flex items-center gap-2">
+              <span className="flex h-2 w-2 rounded-full bg-destructive animate-pulse" />
+              Extraction Failed
+            </p>
+            <p className="text-sm text-muted-foreground leading-relaxed">
+              {error}
+            </p>
+            {error.includes("Manual Mode") && (
+              <Button 
+                variant="outline" 
+                size="sm" 
+                onClick={() => setMode("manual")}
+                className="w-full border-destructive/20 hover:bg-destructive/10 text-destructive font-black transition-all rounded-xl py-5"
+              >
+                Switch to Manual Mode & Paste Transcript
+              </Button>
+            )}
+          </div>
+        )}
       </CardContent>
     </Card>
   )
