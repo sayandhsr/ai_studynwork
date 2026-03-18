@@ -8,9 +8,38 @@ import { createClient } from "@/lib/supabase/server"
  */
 
 function extractVideoId(url: string) {
-  const regExp = /(?:youtube\.com\/(?:watch\?v=|embed\/|shorts\/)|youtu\.be\/)([^&\n?#]+)/;
-  const match = url.match(regExp);
-  return match ? match[1] : null;
+  try {
+    const parsed = new URL(url);
+
+    // youtu.be format (e.g. youtu.be/VIDEO_ID?si=...)
+    if (parsed.hostname === "youtu.be" || parsed.hostname === "www.youtu.be") {
+      return parsed.pathname.slice(1).split("?")[0].split("&")[0];
+    }
+
+    // youtube.com format (e.g. youtube.com/watch?v=VIDEO_ID)
+    if (parsed.searchParams.get("v")) {
+      return parsed.searchParams.get("v");
+    }
+
+    // shorts (e.g. youtube.com/shorts/VIDEO_ID)
+    if (parsed.pathname.includes("/shorts/")) {
+      return parsed.pathname.split("/shorts/")[1].split("?")[0].split("&")[0];
+    }
+
+    // embed (e.g. youtube.com/embed/VIDEO_ID)
+    if (parsed.pathname.includes("/embed/")) {
+      return parsed.pathname.split("/embed/")[1].split("?")[0].split("&")[0];
+    }
+
+    // live (e.g. youtube.com/live/VIDEO_ID)
+    if (parsed.pathname.includes("/live/")) {
+      return parsed.pathname.split("/live/")[1].split("?")[0].split("&")[0];
+    }
+
+    return null;
+  } catch {
+    return null;
+  }
 }
 
 // AI Synthesis Helper
@@ -53,7 +82,13 @@ export async function POST(req: Request) {
     if (!user) return NextResponse.json({ error: "Auth required" }, { status: 401 })
 
     const videoId = url ? extractVideoId(url) : null
-    if (!videoId && !manualTranscript) return NextResponse.json({ error: "Invalid YouTube URL" }, { status: 400 })
+    
+    // VALIDATION: Ensure the result has length between 10–15 characters
+    if (url && (!videoId || videoId.length < 10 || videoId.length > 15)) {
+      return NextResponse.json({ error: "Invalid YouTube URL" }, { status: 400 })
+    }
+
+    if (!videoId && !manualTranscript) return NextResponse.json({ error: "Input required" }, { status: 400 })
 
     console.log("Video ID:", videoId)
 
