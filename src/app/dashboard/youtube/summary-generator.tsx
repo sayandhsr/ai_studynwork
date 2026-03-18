@@ -20,9 +20,19 @@ export function SummaryGenerator() {
   const [mode, setMode] = useState<"auto" | "manual">("auto")
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState("")
+  const [progressStep, setProgressStep] = useState(0)
+
+  const steps = [
+    "Validating Knowledge Cache...",
+    "Extracting Transcript Wisdom...",
+    "Partitioning Content Chunks...",
+    "Processing Parallel Synthesis...",
+    "Finalizing Study Manifesto..."
+  ]
 
   const handleGenerate = async (e: React.FormEvent) => {
     e.preventDefault()
+    if (loading) return;
     
     if (mode === "auto") {
       if (!url.trim() || !url.toLowerCase().includes("yout")) {
@@ -38,6 +48,12 @@ export function SummaryGenerator() {
 
     setError("")
     setLoading(true)
+    setProgressStep(0)
+
+    // Parallel progress simulation for better UX
+    const progressInterval = setInterval(() => {
+      setProgressStep((prev) => (prev < steps.length - 1 ? prev + 1 : prev))
+    }, 2800)
 
     try {
       const payload = mode === "auto" ? { url } : { manualTranscript }
@@ -60,6 +76,7 @@ export function SummaryGenerator() {
     } catch (err: any) {
       setError(err.message || "An unexpected error occurred.")
     } finally {
+      clearInterval(progressInterval)
       setLoading(false)
     }
   }
@@ -113,8 +130,8 @@ export function SummaryGenerator() {
               {loading ? <Loader2 className="h-5 w-5 animate-spin" /> : <Wand2 className="h-5 w-5" />}
               {loading ? (
                 <div className="flex flex-col items-start leading-none gap-1">
-                  <span className="text-[10px]">Processing Wisdom</span>
-                  <span className="text-[8px] opacity-60 animate-pulse">Deep Aesthetic Analysis</span>
+                  <span className="text-[10px]">{steps[progressStep]}</span>
+                  <span className="text-[8px] opacity-60 animate-pulse">Distilling Knowledge in Parallel...</span>
                 </div>
               ) : "Distill Insights"}
               <div className="absolute inset-0 bg-white/5 opacity-0 group-hover:opacity-100 transition-opacity skew-x-12 translate-x-full group-hover:translate-x-0 duration-700" />

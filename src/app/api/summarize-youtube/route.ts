@@ -3,18 +3,51 @@ import { createClient } from "@/lib/supabase/server"
 
 // Robust YouTube ID extraction (Shorts, Live, Embed, Mobile support)
 function extractVideoId(url: string) {
+  if (!url) return null;
   const patterns = [
     /(?:v=|\/v\/|embed\/|shorts\/|youtu\.be\/|\/v=|^)([^#&?]{11})/,
     /youtube\.com\/live\/([^#&?]{11})/,
     /youtube\.com\/watch\?.*v=([^#&?]{11})/,
-    /m\.youtube\.com\/watch\?v=([^#&?]{11})/
+    /m\.youtube\.com\/watch\?v=([^#&?]{11})/,
+    /youtu\.be\/([^#&?]{11})/
   ];
 
   for (const pattern of patterns) {
     const match = url.match(pattern);
     if (match && match[1]) return match[1];
   }
-  return false;
+  return null;
+}
+
+// Helper for AI Chunk Summarization
+async function summarizeChunk(chunk: string, openRouterApiKey: string) {
+  try {
+    const res = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        "Authorization": `Bearer ${openRouterApiKey}`,
+        "Content-Type": "application/json",
+        "HTTP-Referer": "https://ai-productivity-hub.workspace",
+        "X-Title": "Study Sanctuary"
+      },
+      body: JSON.stringify({
+        model: "google/gemini-flash-1.5:free", 
+        messages: [{ 
+            role: "system", 
+            content: "You are a professional YouTube summarizer. Summarize this specific transcript segment accurately. Do not invent info." 
+        }, { 
+            role: "user", 
+            content: chunk.substring(0, 4000) 
+        }]
+      }),
+      signal: AbortSignal.timeout(12000) // 12s AI timeout per chunk
+    });
+    if (!res.ok) return "";
+    const data = await res.json();
+    return data.choices?.[0]?.message?.content || "";
+  } catch (e) {
+    return "";
+  }
 }
 
 export async function POST(req: Request) {
@@ -27,217 +60,119 @@ export async function POST(req: Request) {
 
     const supabase = await createClient()
     const { data: { user } } = await supabase.auth.getUser()
+    if (!user) return NextResponse.json({ error: "Authentication required" }, { status: 401 })
 
-    if (!user) {
-      return NextResponse.json({ error: "Authentication required" }, { status: 401 })
+    const videoId = url ? extractVideoId(url) : null
+
+    // --- STEP 1: CACHE OPTIMIZATION (Check by video_id) ---
+    if (videoId) {
+      const { data: existing } = await supabase
+        .from("yt_summaries")
+        .select("summary")
+        .eq("video_id", videoId)
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle()
+
+      if (existing?.summary) {
+        console.log(`[YT API] Cache Hit for ID: ${videoId}`);
+        return NextResponse.json({ summary: existing.summary, cached: true })
+      }
     }
 
     let transcriptText = manualTranscript || ""
-    const videoId = url ? extractVideoId(url) : null
+    let finalTitle = ""
+    let finalDescription = ""
 
-    // --- AUTOMATIC FETCHING (ONLY IF NO MANUAL TRANSCRIPT) ---
+    // --- STEP 2: FETCH TRANSCRIPT (7s Timeout) ---
     if (!transcriptText && videoId) {
       const rapidApiKey = process.env.RAPIDAPI_KEY;
-
       if (rapidApiKey) {
-        // Fallback 1: youtube-transcript3
         try {
-          console.log(`[YT API] Attempt 1: Fetching transcript via youtube-transcript3 for: ${videoId}`);
-          const rapidApiRes = await fetch(`https://youtube-transcript3.p.rapidapi.com/api/transcript-with-timestamps?video_id=${videoId}`, {
-            headers: { "x-rapidapi-key": rapidApiKey, "x-rapidapi-host": "youtube-transcript3.p.rapidapi.com" }
-          });
+          // RapidAPI Parallel Check (Fastest win)
+          const transcriptProviders = [
+            `https://youtube-transcript3.p.rapidapi.com/api/transcript-with-timestamps?video_id=${videoId}`,
+            `https://subtitles-for-youtube.p.rapidapi.com/subtitles/${videoId}`
+          ];
 
-          if (rapidApiRes.ok) {
-            const rapidData = await rapidApiRes.json();
-            if (rapidData.transcript && Array.isArray(rapidData.transcript)) {
-              transcriptText = rapidData.transcript.map((s: any) => s.text).join(" ");
-            }
-          }
+          const results = await Promise.race([
+            Promise.all(transcriptProviders.map(async (u) => {
+              const res = await fetch(u, {
+                headers: { "x-rapidapi-key": rapidApiKey },
+                signal: AbortSignal.timeout(7000)
+              });
+              if (!res.ok) return null;
+              const data = await res.json();
+              if (Array.isArray(data.transcript)) return data.transcript.map((s: any) => s.text).join(" ");
+              if (Array.isArray(data.subtitles)) return data.subtitles.map((s: any) => s.text).join(" ");
+              return null;
+            })).then(r => r.filter(Boolean)),
+            new Promise((_, reject) => setTimeout(() => reject(new Error("Timeout")), 7000))
+          ]) as string[];
+
+          if (results && results.length > 0) transcriptText = results[0];
         } catch (err) {}
-
-        // Fallback 2: subtitles-for-youtube
-        if (!transcriptText) {
-          try {
-            console.log(`[YT API] Attempt 2: Fetching via subtitles-for-youtube for: ${videoId}`);
-            const subRes = await fetch(`https://subtitles-for-youtube.p.rapidapi.com/subtitles/${videoId}`, {
-              headers: { "x-rapidapi-key": rapidApiKey, "x-rapidapi-host": "subtitles-for-youtube.p.rapidapi.com" }
-            });
-            if (subRes.ok) {
-              const subData = await subRes.json();
-              if (subData.subtitles && Array.isArray(subData.subtitles)) {
-                transcriptText = subData.subtitles.map((s: any) => s.text).join(" ");
-              }
-            }
-          } catch (err) {}
-        }
-
-        // Fallback 3: Supadata (AI Fallback)
-        if (!transcriptText) {
-          try {
-            console.log(`[YT API] Attempt 3: Fetching via Supadata (AI Fallback) for: ${videoId}`);
-            const supadataRes = await fetch(`https://youtube-transcripts.p.rapidapi.com/transcript?url=https://www.youtube.com/watch?v=${videoId}`, {
-              headers: { "x-rapidapi-key": rapidApiKey, "x-rapidapi-host": "youtube-transcripts.p.rapidapi.com" }
-            });
-            if (supadataRes.ok) {
-              const supadataData = await supadataRes.json();
-              if (supadataData.content || supadataData.transcript) {
-                 transcriptText = supadataData.content || supadataData.transcript;
-                 console.log("[YT API] Supadata AI successfully generated content.");
-              }
-            }
-          } catch (err) {}
-        }
       }
 
-      // --- ROBUST FALLBACK (FIRECRAWL DEEP SCRAPE) ---
+      // --- STEP 3: FETCH METADATA (Strict Mode Pivot) ---
       if (!transcriptText || transcriptText.length < 50) {
-        const firecrawlKey = process.env.FIRECRAWL_API_KEY;
-        if (firecrawlKey) {
-          console.log(`[YT API] Transcript unavailable. Final attempt via Firecrawl Metadata Extraction for: ${videoId}`);
-          try {
-            const firecrawlRes = await fetch("https://api.firecrawl.dev/v1/scrape", {
-              method: "POST",
-              headers: { "Authorization": `Bearer ${firecrawlKey}`, "Content-Type": "application/json" },
-              body: JSON.stringify({
-                url: `https://www.youtube.com/watch?v=${videoId}`,
-                formats: ["markdown", "metadata"],
-                waitFor: 4000 
-              })
-            });
-
-            if (firecrawlRes.ok) {
-              const fcData = await firecrawlRes.ok ? await firecrawlRes.json() : null;
-              if (fcData && fcData.success && fcData.data) {
-                const content = fcData.data.markdown || "";
-                const title = fcData.data.metadata?.title || "";
-                const description = fcData.data.metadata?.description || "";
-                
-                if (title || description) {
-                   transcriptText = `UNIVERSAL METADATA INFERENCE (No Transcript Available):\n\nVideo Title: ${title}\n\nVideo Description:\n${description}\n\nPage Context:\n${content.substring(0, 5000)}`;
-                   console.log(`[YT API] Harvested deep metadata. Switching to AI Inference.`);
-                }
-              }
-            }
-          } catch (fcErr) {}
-        }
-      }
-
-      // --- CRITICAL FALLBACK (Omni-Fetch: OEmbed & Raw Scrape) ---
-      if (!transcriptText || transcriptText.length < 20) {
         try {
-          console.log(`[YT API] Omni-Fetch Attempt: Scraping raw data for: ${videoId}`);
-          const rawUrl = `https://www.youtube.com/watch?v=${videoId}`;
-          const rawRes = await fetch(rawUrl, {
-            headers: { 
-                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
-                "Accept-Language": "en-US,en;q=0.9"
+            console.log("[YT API] Transcript failed or too short. Fetching Metadata...");
+            const rawUrl = `https://www.youtube.com/watch?v=${videoId}`;
+            const rawRes = await fetch(rawUrl, {
+                headers: { "User-Agent": "Mozilla/5.0" },
+                signal: AbortSignal.timeout(5000)
+            });
+            if (rawRes.ok) {
+                const html = await rawRes.text();
+                const playerResponseMatch = html.match(/ytInitialPlayerResponse\s*=\s*({.*?});/);
+                if (playerResponseMatch && playerResponseMatch[1]) {
+                    const json = JSON.parse(playerResponseMatch[1]);
+                    finalTitle = json.videoDetails?.title || "";
+                    finalDescription = json.videoDetails?.shortDescription || "";
+                }
             }
-          });
-          
-          if (rawRes.ok) {
-            const html = await rawRes.text();
-            
-            // Extract from ytInitialPlayerResponse (The gold standard)
-            const playerResponseMatch = html.match(/ytInitialPlayerResponse\s*=\s*({.*?});/);
-            const playerDataMatch = html.match(/ytInitialData\s*=\s*({.*?});/);
-            
-            let scrapedTitle = "";
-            let scrapedDesc = "";
-            let scrapedAuthor = "";
-
-            if (playerResponseMatch && playerResponseMatch[1]) {
-              try {
-                const json = JSON.parse(playerResponseMatch[1]);
-                scrapedTitle = json.videoDetails?.title || "";
-                scrapedDesc = json.videoDetails?.shortDescription || "";
-                scrapedAuthor = json.videoDetails?.author || "";
-              } catch (e) {}
-            }
-
-            // Enhanced fallback for Description via ytInitialData
-            if (!scrapedDesc && playerDataMatch && playerDataMatch[1]) {
-              try {
-                const dataJson = JSON.parse(playerDataMatch[1]);
-                // YouTube often nests descriptions deeply in InitialData
-                const contents = dataJson.contents?.twoColumnWatchNextResults?.results?.results?.contents;
-                const videoSecondaryInfo = contents?.find((c: any) => c.videoSecondaryInfoRenderer)?.videoSecondaryInfoRenderer;
-                const descriptionText = videoSecondaryInfo?.description?.runs?.map((r: any) => r.text).join("");
-                if (descriptionText) scrapedDesc = descriptionText;
-              } catch (e) {}
-            }
-
-            // Fallback for Title/Description via Meta tags
-            if (!scrapedTitle) {
-              const metaTitle = html.match(/<meta\s+name="title"\s+content="(.*?)"/i) || html.match(/<title>(.*?)<\/title>/);
-              if (metaTitle) scrapedTitle = metaTitle[1].replace("- YouTube", "").trim();
-            }
-            if (!scrapedDesc) {
-              const metaDesc = html.match(/<meta\s+name="description"\s+content="(.*?)"/i);
-              if (metaDesc) scrapedDesc = metaDesc[1];
-            }
-
-            if (scrapedTitle) {
-              transcriptText = `[[METADATA_EXTRACTED]]\nTITLE: ${scrapedTitle}\nCREATOR: ${scrapedAuthor}\nCONTEXT_DESCRIPTION:\n${scrapedDesc}`;
-              console.log(`[YT API] Omni-Fetch success. Title: ${scrapedTitle.substring(0, 30)}...`);
-            }
-          }
-        } catch (err) {
-           console.error("[YT API] Omni-Fetch Error:", err);
-        }
+        } catch (e) {}
       }
     }
 
-    // --- CLASSIFICATION & MODE SELECTION ---
+    // --- STEP 4: DECISION LOGIC & AI ---
     const isFullTranscript = transcriptText.length > 50;
     const mode = isFullTranscript ? "transcript" : "metadata";
-
-    // If metadata mode, ensure we have the title and description
-    let finalTitle = "";
-    let finalDescription = "";
-    
-    if (mode === "metadata") {
-       console.log("[YT API] Switching to Metadata Mode (No Transcript Found).");
-       // Extract if already in transcriptText from previous scrape
-       if (transcriptText.includes("TITLE:")) {
-          finalTitle = transcriptText.split("TITLE: ")[1]?.split("\n")[0] || "";
-          finalDescription = transcriptText.split("CONTEXT_DESCRIPTION:\n")[1] || 
-                             transcriptText.split("DESCRIPTION: ")[1] || "";
-       }
-       
-       // Final fallback for title if still missing
-       if (!finalTitle && videoId) {
-          finalTitle = `Video Analysis: ${videoId}`;
-       }
-    }
-
     const openRouterApiKey = process.env.OPENROUTER_API_KEY
-    if (!openRouterApiKey) {
-      return NextResponse.json({ error: "AI service not configured" }, { status: 500 })
-    }
+    if (!openRouterApiKey) return NextResponse.json({ error: "AI service not configured" }, { status: 500 })
 
-    // Call OpenRouter
-    const models = [
-      "google/gemini-flash-1.5:free",
-      "deepseek/deepseek-chat",
-      "anthropic/claude-3-haiku"
-    ]
-    let summaryResult = ""
-    let lastError = ""
+    let finalSummary = "";
 
-    for (const model of models) {
-      try {
-        console.log(`[YT API] Executing ${mode.toUpperCase()} Mode with model: ${model}`);
-        
-        let systemPrompt = "";
-        let userContent = "";
+    if (mode === "transcript") {
+      // --- TRANSCRIPT CHUNKING (2.5k chars, Max 8 chunks) ---
+      const chunkSize = 2500;
+      const chunks = [];
+      for (let i = 0; i < transcriptText.length && chunks.length < 8; i += chunkSize) {
+        chunks.push(transcriptText.substring(i, i + chunkSize));
+      }
 
-        if (mode === "transcript") {
-          systemPrompt = `You are a professional YouTube summarizer.
-ONLY summarize the provided transcript.
-Do not assume or add external knowledge.
+      console.log(`[YT API] Processing ${chunks.length} transcript chunks in parallel...`);
+      const chunkSummaries = await Promise.all(chunks.map(c => summarizeChunk(c, openRouterApiKey)));
+      const filteredChunks = chunkSummaries.filter(Boolean);
+
+      // Final Synthesis
+      const synthesisRes = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+        method: "POST",
+        headers: {
+          "Authorization": `Bearer ${openRouterApiKey}`,
+          "Content-Type": "application/json",
+          "HTTP-Referer": "https://ai-productivity-hub.workspace",
+          "X-Title": "Study Sanctuary"
+        },
+        body: JSON.stringify({
+          model: "google/gemini-flash-1.5:free", 
+          messages: [
+            { 
+              role: "system", 
+              content: `You are a professional YouTube summarizer. ONLY summarize the provided segments. Do NOT assume or invent information.
 
 Return:
-
 Summary:
 (2-3 sentences)
 
@@ -249,19 +184,35 @@ Key Points:
 • point 5
 
 Transcript:
-${transcriptText}`;
-          userContent = `Summarize this transcript: ${transcriptText.substring(0, 15000)}`;
-        } else {
-          systemPrompt = `You are analyzing a YouTube video WITHOUT transcript.
-Based ONLY on the title and description, provide a reasonable high-level overview.
-
-IMPORTANT:
-* Do NOT hallucinate details
-* Do NOT invent content
-* Clearly mention that transcript is not available
+${transcriptText.substring(0, 10000)}` 
+            },
+            { role: "user", content: `Synthesize these segment summaries: ${filteredChunks.join("\n\n")}` }
+          ]
+        }),
+        signal: AbortSignal.timeout(12000)
+      });
+      if (synthesisRes.ok) {
+        const data = await synthesisRes.json();
+        finalSummary = data.choices?.[0]?.message?.content || "";
+      }
+    } else if (finalTitle || finalDescription) {
+      // --- METADATA MODE ---
+      const metaRes = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+        method: "POST",
+        headers: {
+          "Authorization": `Bearer ${openRouterApiKey}`,
+          "Content-Type": "application/json",
+          "HTTP-Referer": "https://ai-productivity-hub.workspace",
+          "X-Title": "Study Sanctuary"
+        },
+        body: JSON.stringify({
+          model: "google/gemini-flash-1.5:free", 
+          messages: [
+            { 
+              role: "system", 
+              content: `You are analyzing a YouTube video WITHOUT transcript. Based ONLY on the title and description, provide a reasonable high-level overview. DO NOT hallucinate.
 
 Return:
-
 Overview:
 (2-3 sentence general idea)
 
@@ -271,69 +222,34 @@ Possible Topics:
 • inferred topic 3
 
 Note:
-Transcript not available. This is a metadata-based summary.`;
-          userContent = `Analyze this video based on metadata:
-Title: ${finalTitle}
-Description: ${finalDescription.substring(0, 5000)}`;
-        }
-
-        const openRouterRes = await fetch("https://openrouter.ai/api/v1/chat/completions", {
-          method: "POST",
-          headers: {
-            "Authorization": `Bearer ${openRouterApiKey}`,
-            "Content-Type": "application/json",
-            "HTTP-Referer": "https://ai-productivity-hub.workspace",
-            "X-Title": "Study Sanctuary"
-          },
-          body: JSON.stringify({
-            model: model, 
-            messages: [
-              { role: "system", content: systemPrompt },
-              { role: "user", content: userContent }
-            ]
-          }),
-          signal: AbortSignal.timeout(60000)
-        })
-
-        if (openRouterRes.ok) {
-          const data = await openRouterRes.json()
-          if (data.choices && data.choices.length > 0) {
-            summaryResult = data.choices[0].message.content
-            break 
-          }
-        }
-      } catch (err: any) {
-        lastError = err.message
+Transcript not available. This is a metadata-based summary.` 
+            },
+            { role: "user", content: `Analyze: Title: ${finalTitle}\nDescription: ${finalDescription}` }
+          ]
+        }),
+        signal: AbortSignal.timeout(12000)
+      });
+      if (metaRes.ok) {
+        const data = await metaRes.json();
+        finalSummary = data.choices?.[0]?.message?.content || "";
       }
     }
 
-    // --- HEURISTIC FALLBACK (IF BOTH SCRAPE & AI FAIL) ---
-    if (!summaryResult) {
-      if (mode === "transcript") {
-        summaryResult = `Summary:\nAn analytical review of the video's core message based on the provided transcript.\n\nKey Points:\n• Core content extraction failure\n• Please verify your link or refresh\n\nTranscript:\n${transcriptText.substring(0, 500)}`;
-      } else if (finalTitle || finalDescription) {
-        summaryResult = `Overview:\nA metadata-based analysis of "${finalTitle}". The content appears to cover themes identified in the title and description provided by the creator.\n\nPossible Topics:\n• ${finalTitle.substring(0, 50)}\n• Creator specialized insights\n\nNote:\nTranscript not available. This is a metadata-based summary.`;
-      } else {
-        summaryResult = "Unable to analyze this video. Please try another link.";
+    if (!finalSummary) {
+       return NextResponse.json({ error: "Unable to analyze this video. Please try another link." }, { status: 404 });
+    }
+
+    // --- PERSISTENCE ---
+    await supabase.from("yt_summaries").insert([
+      { 
+        user_id: user.id, 
+        video_url: url || "Manual Entry", 
+        video_id: videoId || null,
+        summary: finalSummary 
       }
-    }
+    ]);
 
-    // Save to database
-    const { error: dbError } = await supabase
-      .from("yt_summaries")
-      .insert([
-        { 
-          user_id: user.id, 
-          video_url: url || "Manual Entry", 
-          summary: summaryResult 
-        }
-      ])
-
-    if (dbError) {
-      console.error("Database Save Error:", dbError)
-    }
-
-    return NextResponse.json({ summary: summaryResult })
+    return NextResponse.json({ summary: finalSummary })
     
   } catch (error: any) {
     console.error("Summarize API Error:", error)
