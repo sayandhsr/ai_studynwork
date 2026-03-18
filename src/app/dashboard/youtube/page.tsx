@@ -65,7 +65,14 @@ export default async function YouTubeSummarizerPage() {
                         {summary.mode_used && (
                           <>
                             <span className="opacity-20">|</span>
-                            <span className="text-primary/60">Source: {summary.mode_used}</span>
+                            <span className="text-primary/60">
+                              Source: {
+                                summary.mode_used === "transcript" ? "Transcript" :
+                                summary.mode_used === "audio" ? "AI Audio Transcription" :
+                                summary.mode_used === "metadata" ? "Metadata (Limited Accuracy)" :
+                                "Manual"
+                              }
+                            </span>
                           </>
                         )}
                       </CardDescription>

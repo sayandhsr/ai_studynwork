@@ -131,7 +131,9 @@ export function SummaryGenerator() {
               {loading ? (
                 <div className="flex flex-col items-start leading-none gap-1">
                   <span className="text-[10px]">{steps[progressStep]}</span>
-                  <span className="text-[8px] opacity-60 animate-pulse">Universal Zero-Failure Sequence...</span>
+                  <span className="text-[8px] opacity-60 animate-pulse">
+                    {progressStep === 3 ? "Analyzing audio using AI (may take a few seconds)" : "Universal Zero-Failure Sequence..."}
+                  </span>
                 </div>
               ) : "Distill Insights"}
               <div className="absolute inset-0 bg-white/5 opacity-0 group-hover:opacity-100 transition-opacity skew-x-12 translate-x-full group-hover:translate-x-0 duration-700" />
