@@ -2,35 +2,23 @@ import { NextResponse } from "next/server"
 import { createClient } from "@/lib/supabase/server"
 
 /**
- * CONTENT-FIRST YOUTUBE SUMMARIZER V4 (Zero-Failure)
- * Hierarchy: 
- * 1. Native Transcript (Primary)
- * 2. AI Audio Transcription (Secondary)
- * 3. Metadata (Fallback - Limited Accuracy)
+ * BULLETPROOF YOUTUBE SUMMARIZER V5
+ * Logic: Strictly Sequential Fallback
+ * No early returns on failure.
  */
 
 function extractVideoId(url: string) {
-  if (!url) return null;
-  const patterns = [
-    /(?:v=|\/v\/|embed\/|shorts\/|youtu\.be\/|\/v=|^)([^#&?]{11})/,
-    /youtube\.com\/live\/([^#&?]{11})/,
-    /youtube\.com\/watch\?.*v=([^#&?]{11})/,
-    /m\.youtube\.com\/watch\?v=([^#&?]{11})/,
-    /youtu\.be\/([^#&?]{11})/
-  ];
-  for (const pattern of patterns) {
-    const match = url.match(pattern);
-    if (match && match[1]) return match[1];
-  }
-  return null;
+  const regExp = /(?:youtube\.com\/(?:watch\?v=|embed\/|shorts\/)|youtu\.be\/)([^&\n?#]+)/;
+  const match = url.match(regExp);
+  return match ? match[1] : null;
 }
 
 // AI Synthesis Helper
 async function synthesize(content: string, mode: string, openRouterApiKey: string, meta?: any) {
   const systemPrompts: Record<string, string> = {
-    transcript: "You are a professional YouTube summarizer. Summarize this official transcript accurately. Return: Summary: (2-3 lines), Key Points: (5 bullets).",
-    audio: "You are analyzing an AI-GENERATED transcript from video audio. Summarize the content accurately. Return: Summary: (2-3 lines), Key Points: (5 bullets).",
-    metadata: "You are analyzing a video WITHOUT spoken content. Based ONLY on the title/description, provide a high-level overview. Return: Overview: (2-3 lines), Possible Topics: (3 bullets). [Source: Limited Evidence]"
+    transcript: "Summarize this official transcript accurately. Return: Summary: (2-3 lines), Key Points: (5 bullets).",
+    audio: "Summarize this AI-Generated spoken content accurately. Return: Summary: (2-3 lines), Key Points: (5 bullets).",
+    metadata: "Based ONLY on the title/description, provide a high-level overview. Return: Overview: (2-3 lines), Possible Topics: (3 bullets). [Source: Metadata (Limited Accuracy)]"
   };
 
   const userPrompt = mode === "metadata" 
@@ -65,8 +53,11 @@ export async function POST(req: Request) {
     if (!user) return NextResponse.json({ error: "Auth required" }, { status: 401 })
 
     const videoId = url ? extractVideoId(url) : null
+    if (!videoId && !manualTranscript) return NextResponse.json({ error: "Invalid YouTube URL" }, { status: 400 })
 
-    // --- TIER 0: CACHE ---
+    console.log("Video ID:", videoId)
+
+    // --- CACHE CHECK ---
     if (videoId) {
       const { data: cached } = await supabase.from("yt_summaries")
         .select("summary, mode_used").eq("video_id", videoId).maybeSingle();
@@ -74,81 +65,84 @@ export async function POST(req: Request) {
     }
 
     let summary = "";
-    let finalContent = manualTranscript || "";
-    let finalMode: "transcript" | "audio" | "metadata" | "manual" = manualTranscript ? "manual" : "transcript";
+    let transcriptText = manualTranscript || "";
+    let audioTranscriptText = "";
+    let metadataResult = null;
 
-    // --- TIER 1: NATIVE TRANSCRIPT (Short-Circuit) ---
-    if (!finalContent && videoId && rapidKey) {
-      for (let attempt = 0; attempt < 2; attempt++) { // Retry once
-        try {
-          console.log(`[V4 API] Tier 1 Attempt ${attempt + 1}: ${videoId}`);
-          const res = await fetch(`https://youtube-transcript3.p.rapidapi.com/api/transcript-with-timestamps?video_id=${videoId}`, {
-            headers: { "x-rapidapi-key": rapidKey },
-            signal: AbortSignal.timeout(5000)
-          });
-          if (res.ok) {
-            const data = await res.json();
-            if (Array.isArray(data.transcript)) {
-              finalContent = data.transcript.map((s: any) => s.text).join(" ");
-              summary = await synthesize(finalContent, "transcript", orKey!);
-              if (summary) { finalMode = "transcript"; break; }
-            }
-          }
-        } catch (e) { console.warn(`[V4 API] T1 Attempt ${attempt + 1} Failed`); }
-      }
-    }
-
-    // --- TIER 2: AI AUDIO TRANSCRIPTION (Short-Circuit) ---
-    if (!summary && videoId && rapidKey) {
-      console.log(`[V4 API] T1 Failed. Tier 2 (Audio AI) Triggered: ${videoId}`);
-      for (let attempt = 0; attempt < 2; attempt++) { // Retry once
-        try {
-          const aiRes = await fetch(`https://youtube-transcripts.p.rapidapi.com/transcript?url=https://www.youtube.com/watch?v=${videoId}`, {
-            headers: { "x-rapidapi-key": rapidKey },
-            signal: AbortSignal.timeout(20000)
-          });
-          if (aiRes.ok) {
-            const aidata = await aiRes.json();
-            const text = aidata.content || aidata.transcript || "";
-            if (text.length > 100) {
-              summary = await synthesize(text, "audio", orKey!);
-              if (summary) { finalMode = "audio"; finalContent = text; break; }
-            }
-          }
-        } catch (e) { console.warn(`[V4 API] T2 Attempt ${attempt + 1} Failed`); }
-      }
-    }
-
-    // --- TIER 3: METADATA FALLBACK ---
-    if (!summary && videoId) {
-      console.log(`[V4 API] T1/T2 Failed. Tier 3 (Metadata) Triggered: ${videoId}`);
-      finalMode = "metadata";
+    // --- 1. TRANSCRIPT STEP ---
+    if (!transcriptText && videoId && rapidKey) {
       try {
-        const oembed = await fetch(`https://www.youtube.com/oembed?url=https://www.youtube.com/watch?v=${videoId}&format=json`).then(r => r.json());
-        const rawHtml = await fetch(`https://www.youtube.com/watch?v=${videoId}`, { headers: { "User-Agent": "Mozilla/5.0" } }).then(r => r.text());
-        const playerMatch = rawHtml.match(/ytInitialPlayerResponse\s*=\s*({.*?});/);
-        const description = playerMatch ? JSON.parse(playerMatch[1]).videoDetails?.shortDescription : "";
-        summary = await synthesize("", "metadata", orKey!, { title: oembed.title, description });
-      } catch (e) { console.error("[V4 API] T3 Metadata Failed", e); }
+        const res = await fetch(`https://youtube-transcript3.p.rapidapi.com/api/transcript-with-timestamps?video_id=${videoId}`, {
+          headers: { "x-rapidapi-key": rapidKey },
+          signal: AbortSignal.timeout(6000)
+        });
+        if (res.ok) {
+          const data = await res.json();
+          if (Array.isArray(data.transcript)) {
+            transcriptText = data.transcript.map((s: any) => s.text).join(" ");
+            console.log("Transcript length:", transcriptText.length)
+            if (transcriptText.length > 50) {
+              summary = await synthesize(transcriptText, "transcript", orKey!);
+              if (summary) {
+                await supabase.from("yt_summaries").insert([{ user_id: user.id, video_url: url, video_id: videoId, summary, transcript: transcriptText, mode_used: "transcript" }]);
+                return NextResponse.json({ summary, mode_used: "transcript" });
+              }
+            }
+          }
+        }
+      } catch (e) {}
+      console.log("Transcript failed");
     }
 
-    // --- PERSISTENCE & RETURN ---
-    if (!summary) return NextResponse.json({ error: "All extraction tiers failed for this video." }, { status: 404 });
+    // --- 2. AUDIO STEP (Must run if T1 fails) ---
+    if (!summary && videoId && rapidKey) {
+      console.log("Triggering audio fallback")
+      try {
+        const aiRes = await fetch(`https://youtube-transcripts.p.rapidapi.com/transcript?url=https://www.youtube.com/watch?v=${videoId}`, {
+          headers: { "x-rapidapi-key": rapidKey },
+          signal: AbortSignal.timeout(20000)
+        });
+        if (aiRes.ok) {
+          const aidata = await aiRes.json();
+          audioTranscriptText = aidata.content || aidata.transcript || "";
+          console.log("Audio transcript length:", audioTranscriptText.length)
+          if (audioTranscriptText.length > 50) {
+            summary = await synthesize(audioTranscriptText, "audio", orKey!);
+            if (summary) {
+              await supabase.from("yt_summaries").insert([{ user_id: user.id, video_url: url, video_id: videoId, summary, transcript: audioTranscriptText, mode_used: "audio" }]);
+              return NextResponse.json({ summary, mode_used: "audio" });
+            }
+          }
+        }
+      } catch (err) {}
+      console.log("Audio failed");
+    }
 
-    await supabase.from("yt_summaries").insert([{
-      user_id: user.id,
-      video_url: url || "Manual",
-      video_id: videoId || null,
-      summary: summary,
-      transcript: finalContent,
-      mode_used: finalMode
-    }]);
+    // --- 3. METADATA STEP (Final Fallback) ---
+    if (!summary && videoId) {
+      console.log("Triggering metadata fallback")
+      try {
+        const metaRes = await fetch(`https://www.youtube.com/oembed?url=https://www.youtube.com/watch?v=${videoId}&format=json`);
+        if (metaRes.ok) {
+          metadataResult = await metaRes.json();
+          console.log("Metadata:", metadataResult)
+          if (metadataResult && metadataResult.title) {
+            summary = await synthesize("", "metadata", orKey!, { title: metadataResult.title, description: metadataResult.author_name });
+            if (summary) {
+              await supabase.from("yt_summaries").insert([{ user_id: user.id, video_url: url, video_id: videoId, summary, mode_used: "metadata" }]);
+              return NextResponse.json({ summary, mode_used: "metadata" });
+            }
+          }
+        }
+      } catch (e) {}
+    }
 
-    return NextResponse.json({ summary, mode_used: finalMode });
+    // --- FINAL FAILSAFE ---
+    return NextResponse.json({ error: "Unable to analyze this video. Please try another link." }, { status: 500 });
 
   } catch (error) {
-    console.error("[V4 API] Global Fatal:", error);
-    return NextResponse.json({ error: "An unexpected error occurred in the extraction pipeline." }, { status: 500 });
+    console.error("Global Error:", error);
+    return NextResponse.json({ error: "Unable to analyze this video. Please try another link." }, { status: 500 });
   }
 }
 
