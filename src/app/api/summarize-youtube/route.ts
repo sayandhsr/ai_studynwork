@@ -72,14 +72,26 @@ async function synthesize(content: string, mode: string, openRouterApiKey: strin
 export async function POST(req: Request) {
   try {
     const { url, manualTranscript } = await req.json()
+    console.log("[DEBUG] API Request Received:", { url, hasManual: !!manualTranscript })
     const rapidKey = process.env.RAPIDAPI_KEY;
     const orKey = process.env.OPENROUTER_API_KEY;
 
     if (!url && !manualTranscript) return NextResponse.json({ error: "Input required" }, { status: 400 })
 
+    console.log("[DEBUG] Creating Supabase Client...")
     const supabase = await createClient()
-    const { data: { user } } = await supabase.auth.getUser()
-    if (!user) return NextResponse.json({ error: "Auth required" }, { status: 401 })
+    console.log("[DEBUG] Fetching User...")
+    const { data: { user }, error: authError } = await supabase.auth.getUser()
+    
+    if (authError) {
+      console.error("[DEBUG] Supabase Auth Error:", authError)
+    }
+
+    if (!user) {
+      console.warn("[DEBUG] No User Authenticated")
+      return NextResponse.json({ error: "Auth required. Please log in again." }, { status: 401 })
+    }
+    console.log("[DEBUG] User Authenticated:", user.email)
 
     const videoId = url ? extractVideoId(url) : null
     console.log("Video ID:", videoId)
@@ -185,10 +197,15 @@ export async function POST(req: Request) {
     }
 
     // --- FINAL FAILSAFE ---
+    console.warn("[DEBUG] All Tiers Exhausted")
     return NextResponse.json({ error: "Unable to analyze this video. Please try another link." }, { status: 500 });
 
-  } catch (error) {
-    console.error("Global Fatal Error:", error);
-    return NextResponse.json({ error: "Unable to analyze this video. Please try another link." }, { status: 500 });
+  } catch (error: any) {
+    console.error("[DEBUG] Global Fatal Error in API:", {
+      message: error.message,
+      stack: error.stack,
+      cause: error.cause
+    });
+    return NextResponse.json({ error: `Server Error: ${error.message}` }, { status: 500 });
   }
 }
