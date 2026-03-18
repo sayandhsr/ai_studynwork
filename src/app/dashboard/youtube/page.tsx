@@ -60,8 +60,14 @@ export default async function YouTubeSummarizerPage() {
                          VIDEO RESOURCE
                          <ExternalLink className="h-3 w-3 inline" />
                       </a>
-                      <CardDescription className="text-[10px] font-bold tracking-[0.2em] uppercase opacity-50">
+                      <CardDescription className="text-[10px] font-bold tracking-[0.2em] uppercase opacity-50 flex items-center gap-2">
                         {formatDistanceToNow(new Date(summary.created_at), { addSuffix: true })}
+                        {summary.mode_used && (
+                          <>
+                            <span className="opacity-20">|</span>
+                            <span className="text-primary/60">Source: {summary.mode_used}</span>
+                          </>
+                        )}
                       </CardDescription>
                     </div>
                   </div>

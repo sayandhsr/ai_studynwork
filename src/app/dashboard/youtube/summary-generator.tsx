@@ -25,8 +25,8 @@ export function SummaryGenerator() {
   const steps = [
     "Validating Knowledge Cache...",
     "Extracting Transcript Wisdom...",
-    "Partitioning Content Chunks...",
-    "Processing Parallel Synthesis...",
+    "Harvesting Metadata Insights...",
+    "Analyzing Audio via AI (Tier 3)...",
     "Finalizing Study Manifesto..."
   ]
 
@@ -50,10 +50,10 @@ export function SummaryGenerator() {
     setLoading(true)
     setProgressStep(0)
 
-    // Parallel progress simulation for better UX
+    // Parallel progress simulation for better UX (Slower steps for V3)
     const progressInterval = setInterval(() => {
       setProgressStep((prev) => (prev < steps.length - 1 ? prev + 1 : prev))
-    }, 2800)
+    }, 4000)
 
     try {
       const payload = mode === "auto" ? { url } : { manualTranscript }
@@ -131,7 +131,7 @@ export function SummaryGenerator() {
               {loading ? (
                 <div className="flex flex-col items-start leading-none gap-1">
                   <span className="text-[10px]">{steps[progressStep]}</span>
-                  <span className="text-[8px] opacity-60 animate-pulse">Distilling Knowledge in Parallel...</span>
+                  <span className="text-[8px] opacity-60 animate-pulse">Universal Zero-Failure Sequence...</span>
                 </div>
               ) : "Distill Insights"}
               <div className="absolute inset-0 bg-white/5 opacity-0 group-hover:opacity-100 transition-opacity skew-x-12 translate-x-full group-hover:translate-x-0 duration-700" />
