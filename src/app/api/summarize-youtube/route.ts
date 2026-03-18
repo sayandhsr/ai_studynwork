@@ -187,10 +187,27 @@ export async function POST(req: Request) {
       }
     }
 
-    // --- ZERO-BARRIER FALLBACK ---
-    if (!transcriptText || transcriptText.length < 5) {
-      transcriptText = `[[URL_ONLY_MODE]]\nVideo URL: ${url}`;
-      console.log("[YT API] Scrapers provided zero data. Proceeding in Link-Only Mode.");
+    // --- CLASSIFICATION & MODE SELECTION ---
+    const isFullTranscript = transcriptText.length > 50;
+    const mode = isFullTranscript ? "transcript" : "metadata";
+
+    // If metadata mode, ensure we have the title and description
+    let finalTitle = "";
+    let finalDescription = "";
+    
+    if (mode === "metadata") {
+       console.log("[YT API] Switching to Metadata Mode (No Transcript Found).");
+       // Extract if already in transcriptText from previous scrape
+       if (transcriptText.includes("TITLE:")) {
+          finalTitle = transcriptText.split("TITLE: ")[1]?.split("\n")[0] || "";
+          finalDescription = transcriptText.split("CONTEXT_DESCRIPTION:\n")[1] || 
+                             transcriptText.split("DESCRIPTION: ")[1] || "";
+       }
+       
+       // Final fallback for title if still missing
+       if (!finalTitle && videoId) {
+          finalTitle = `Video Analysis: ${videoId}`;
+       }
     }
 
     const openRouterApiKey = process.env.OPENROUTER_API_KEY
@@ -204,14 +221,62 @@ export async function POST(req: Request) {
       "deepseek/deepseek-chat",
       "anthropic/claude-3-haiku"
     ]
-    let summary = ""
+    let summaryResult = ""
     let lastError = ""
-
-    const isMetadataOnly = transcriptText.includes("UNIVERSAL METADATA INFERENCE") || transcriptText.includes("[[METADATA_EXTRACTED]]");
 
     for (const model of models) {
       try {
-        console.log(`[YT API] Attempting comprehensive study with model: ${model}`);
+        console.log(`[YT API] Executing ${mode.toUpperCase()} Mode with model: ${model}`);
+        
+        let systemPrompt = "";
+        let userContent = "";
+
+        if (mode === "transcript") {
+          systemPrompt = `You are a professional YouTube summarizer.
+ONLY summarize the provided transcript.
+Do not assume or add external knowledge.
+
+Return:
+
+Summary:
+(2-3 sentences)
+
+Key Points:
+• point 1
+• point 2
+• point 3
+• point 4
+• point 5
+
+Transcript:
+${transcriptText}`;
+          userContent = `Summarize this transcript: ${transcriptText.substring(0, 15000)}`;
+        } else {
+          systemPrompt = `You are analyzing a YouTube video WITHOUT transcript.
+Based ONLY on the title and description, provide a reasonable high-level overview.
+
+IMPORTANT:
+* Do NOT hallucinate details
+* Do NOT invent content
+* Clearly mention that transcript is not available
+
+Return:
+
+Overview:
+(2-3 sentence general idea)
+
+Possible Topics:
+• inferred topic 1
+• inferred topic 2
+• inferred topic 3
+
+Note:
+Transcript not available. This is a metadata-based summary.`;
+          userContent = `Analyze this video based on metadata:
+Title: ${finalTitle}
+Description: ${finalDescription.substring(0, 5000)}`;
+        }
+
         const openRouterRes = await fetch("https://openrouter.ai/api/v1/chat/completions", {
           method: "POST",
           headers: {
@@ -223,23 +288,8 @@ export async function POST(req: Request) {
           body: JSON.stringify({
             model: model, 
             messages: [
-              { 
-                role: "system", 
-                content: `You are an elite academic analyzer and content strategist. 
-                ${transcriptText.includes("[[URL_ONLY_MODE]]")
-                  ? "NOTICE: Scrapers failed to find a transcript. You have ONLY the video URL. If you can access your internal database for this video, provide a full breakdown. Otherwise, explain its likely content based on the URL context."
-                  : isMetadataOnly 
-                    ? "NOTICE: This video has NO TRANSCRIPT. You are provided with deep METADATA (Title, Description, Snippets). Reconstruct the video's core lecture, intent, and value proposition into a detailed study guide. Do not mention that a transcript is missing." 
-                    : "You are provided with a full transcript. Structure this into a premium, detailed study report."}
-                
-                REQUIREMENTS:
-                1. Start with a 'Study Manifesto' (high-level summary).
-                2. Use 'Core Architecture' for the main sections.
-                3. Add a 'Practical Application' section.
-                4. Use elegant Markdown: Bold headers, clean bullet points, and italicized emphasis.
-                5. Tone: Academic, sophisticated, and encouraging.`
-              },
-              { role: "user", content: `Please provide a detailed study of this content:\n\n${transcriptText}` }
+              { role: "system", content: systemPrompt },
+              { role: "user", content: userContent }
             ]
           }),
           signal: AbortSignal.timeout(60000)
@@ -248,7 +298,7 @@ export async function POST(req: Request) {
         if (openRouterRes.ok) {
           const data = await openRouterRes.json()
           if (data.choices && data.choices.length > 0) {
-            summary = data.choices[0].message.content
+            summaryResult = data.choices[0].message.content
             break 
           }
         }
@@ -257,41 +307,15 @@ export async function POST(req: Request) {
       }
     }
 
-    if (!summary) {
-      console.warn(`[YT API] AI Error: ${lastError}. Rendering Elite Heuristic Study.`);
-      
-      const isOmni = transcriptText.includes("[[METADATA_EXTRACTED]]");
-      let title = "Conceptual Video Study";
-      let description = "";
-
-      if (isOmni) {
-        title = transcriptText.split("TITLE: ")[1]?.split("\n")[0] || title;
-        description = transcriptText.split("CONTEXT_DESCRIPTION:\n")[1] || "";
+    // --- HEURISTIC FALLBACK (IF BOTH SCRAPE & AI FAIL) ---
+    if (!summaryResult) {
+      if (mode === "transcript") {
+        summaryResult = `Summary:\nAn analytical review of the video's core message based on the provided transcript.\n\nKey Points:\n• Core content extraction failure\n• Please verify your link or refresh\n\nTranscript:\n${transcriptText.substring(0, 500)}`;
+      } else if (finalTitle || finalDescription) {
+        summaryResult = `Overview:\nA metadata-based analysis of "${finalTitle}". The content appears to cover themes identified in the title and description provided by the creator.\n\nPossible Topics:\n• ${finalTitle.substring(0, 50)}\n• Creator specialized insights\n\nNote:\nTranscript not available. This is a metadata-based summary.`;
       } else {
-        title = transcriptText.split("Video Title: ")[1]?.split("\n")[0] || title;
-        description = transcriptText.split("Video Description:\n")[1]?.split("\n\n")[0] || "";
+        summaryResult = "Unable to analyze this video. Please try another link.";
       }
-
-      summary = `# STUDY MANIFESTO: ${title}
-
-*Note: The deep AI analysis engine is currently synchronizing. In the interim, this conceptual study has been curated from the video's primary metadata.*
-
-## 🏛️ CORE ARCHITECTURE
-
-### 1. Central Premise
-Based on the available context for **"${title}"**, this video explores the intersection of intent and execution within its subject matter. It is designed to provide viewers with a foundational understanding of its core themes.
-
-### 2. Contextual Narrative
-${description ? description.substring(0, 1500) + "..." : "The video presents a visual-first narrative, focusing on information that extends beyond the written description."}
-
-## 🎯 PRACTICAL APPLICATION
-
-1. **Analytical Review**: Critically examine the title's implications to anticipate the video's trajectory.
-2. **Supplemental Research**: Use the key terms provided in the title to broaden your sanctuary's knowledge vault.
-3. **Observation**: Focus on how the creator's intent aligns with your current learning objectives. 
-
----
-*Sanctuary Edition: Metadata Harvest v2.0*`;
     }
 
     // Save to database
@@ -301,7 +325,7 @@ ${description ? description.substring(0, 1500) + "..." : "The video presents a v
         { 
           user_id: user.id, 
           video_url: url || "Manual Entry", 
-          summary: summary 
+          summary: summaryResult 
         }
       ])
 
@@ -309,11 +333,11 @@ ${description ? description.substring(0, 1500) + "..." : "The video presents a v
       console.error("Database Save Error:", dbError)
     }
 
-    return NextResponse.json({ summary })
+    return NextResponse.json({ summary: summaryResult })
     
   } catch (error: any) {
     console.error("Summarize API Error:", error)
-    return NextResponse.json({ error: error.message || "Failed to process request" }, { status: 500 })
+    return NextResponse.json({ error: "Unable to analyze this video. Please try another link." }, { status: 500 })
   }
 }
 
