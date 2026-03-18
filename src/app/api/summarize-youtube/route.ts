@@ -82,15 +82,14 @@ export async function POST(req: Request) {
     if (!user) return NextResponse.json({ error: "Auth required" }, { status: 401 })
 
     const videoId = url ? extractVideoId(url) : null
-    
+    console.log("Video ID:", videoId)
+
     // VALIDATION: Ensure the result has length between 10–15 characters
     if (url && (!videoId || videoId.length < 10 || videoId.length > 15)) {
       return NextResponse.json({ error: "Invalid YouTube URL" }, { status: 400 })
     }
 
     if (!videoId && !manualTranscript) return NextResponse.json({ error: "Input required" }, { status: 400 })
-
-    console.log("Video ID:", videoId)
 
     // --- CACHE CHECK ---
     if (videoId) {
@@ -99,13 +98,12 @@ export async function POST(req: Request) {
       if (cached?.summary) return NextResponse.json({ summary: cached.summary, mode_used: cached.mode_used, cached: true });
     }
 
-    let summary = "";
-    let transcriptText = manualTranscript || "";
-    let audioTranscriptText = "";
-    let metadataResult = null;
+    let transcript = null;
+    let audioTranscript = null;
+    let metadata = null;
 
     // --- 1. TRANSCRIPT STEP ---
-    if (!transcriptText && videoId && rapidKey) {
+    if (!manualTranscript && videoId && rapidKey) {
       try {
         const res = await fetch(`https://youtube-transcript3.p.rapidapi.com/api/transcript-with-timestamps?video_id=${videoId}`, {
           headers: { "x-rapidapi-key": rapidKey },
@@ -114,23 +112,32 @@ export async function POST(req: Request) {
         if (res.ok) {
           const data = await res.json();
           if (Array.isArray(data.transcript)) {
-            transcriptText = data.transcript.map((s: any) => s.text).join(" ");
-            console.log("Transcript length:", transcriptText.length)
-            if (transcriptText.length > 50) {
-              summary = await synthesize(transcriptText, "transcript", orKey!);
+            transcript = data.transcript.map((s: any) => s.text).join(" ");
+            console.log("Transcript length:", transcript?.length)
+            
+            if (transcript && transcript.length > 50) {
+              const summary = await synthesize(transcript, "transcript", orKey!);
               if (summary) {
-                await supabase.from("yt_summaries").insert([{ user_id: user.id, video_url: url, video_id: videoId, summary, transcript: transcriptText, mode_used: "transcript" }]);
+                await supabase.from("yt_summaries").insert([{ user_id: user.id, video_url: url, video_id: videoId, summary, transcript, mode_used: "transcript" }]);
                 return NextResponse.json({ summary, mode_used: "transcript" });
               }
             }
           }
         }
-      } catch (e) {}
-      console.log("Transcript failed");
+      } catch (err) {
+        console.log("Transcript failed:", err);
+      }
+    } else if (manualTranscript) {
+      transcript = manualTranscript; // Handle manual entry
+      const summary = await synthesize(transcript, "transcript", orKey!);
+      if (summary) {
+        await supabase.from("yt_summaries").insert([{ user_id: user.id, video_url: "Manual", summary, transcript, mode_used: "manual" }]);
+        return NextResponse.json({ summary, mode_used: "manual" });
+      }
     }
 
-    // --- 2. AUDIO STEP (Must run if T1 fails) ---
-    if (!summary && videoId && rapidKey) {
+    // --- 2. AUDIO STEP (MUST ALWAYS RUN IF T1 FAILS) ---
+    if (videoId && rapidKey) {
       console.log("Triggering audio fallback")
       try {
         const aiRes = await fetch(`https://youtube-transcripts.p.rapidapi.com/transcript?url=https://www.youtube.com/watch?v=${videoId}`, {
@@ -139,45 +146,49 @@ export async function POST(req: Request) {
         });
         if (aiRes.ok) {
           const aidata = await aiRes.json();
-          audioTranscriptText = aidata.content || aidata.transcript || "";
-          console.log("Audio transcript length:", audioTranscriptText.length)
-          if (audioTranscriptText.length > 50) {
-            summary = await synthesize(audioTranscriptText, "audio", orKey!);
+          audioTranscript = aidata.content || aidata.transcript || "";
+          console.log("Audio transcript length:", audioTranscript?.length)
+          
+          if (audioTranscript && audioTranscript.length > 50) {
+            const summary = await synthesize(audioTranscript, "audio", orKey!);
             if (summary) {
-              await supabase.from("yt_summaries").insert([{ user_id: user.id, video_url: url, video_id: videoId, summary, transcript: audioTranscriptText, mode_used: "audio" }]);
+              await supabase.from("yt_summaries").insert([{ user_id: user.id, video_url: url, video_id: videoId, summary, transcript: audioTranscript, mode_used: "audio" }]);
               return NextResponse.json({ summary, mode_used: "audio" });
             }
           }
         }
-      } catch (err) {}
-      console.log("Audio failed");
+      } catch (err) {
+        console.log("Audio failed:", err);
+      }
     }
 
-    // --- 3. METADATA STEP (Final Fallback) ---
-    if (!summary && videoId) {
+    // --- 3. METADATA STEP (MUST ALWAYS RUN IF T2 FAILS) ---
+    if (videoId) {
       console.log("Triggering metadata fallback")
       try {
-        const metaRes = await fetch(`https://www.youtube.com/oembed?url=https://www.youtube.com/watch?v=${videoId}&format=json`);
-        if (metaRes.ok) {
-          metadataResult = await metaRes.json();
-          console.log("Metadata:", metadataResult)
-          if (metadataResult && metadataResult.title) {
-            summary = await synthesize("", "metadata", orKey!, { title: metadataResult.title, description: metadataResult.author_name });
+        const res = await fetch(`https://www.youtube.com/oembed?url=https://www.youtube.com/watch?v=${videoId}&format=json`);
+        if (res.ok) {
+          metadata = await res.json();
+          console.log("Metadata:", metadata)
+          
+          if (metadata && metadata.title) {
+            const summary = await synthesize("", "metadata", orKey!, { title: metadata.title, description: metadata.author_name });
             if (summary) {
               await supabase.from("yt_summaries").insert([{ user_id: user.id, video_url: url, video_id: videoId, summary, mode_used: "metadata" }]);
               return NextResponse.json({ summary, mode_used: "metadata" });
             }
           }
         }
-      } catch (e) {}
+      } catch (err) {
+        console.log("Metadata failed:", err);
+      }
     }
 
     // --- FINAL FAILSAFE ---
     return NextResponse.json({ error: "Unable to analyze this video. Please try another link." }, { status: 500 });
 
   } catch (error) {
-    console.error("Global Error:", error);
+    console.error("Global Fatal Error:", error);
     return NextResponse.json({ error: "Unable to analyze this video. Please try another link." }, { status: 500 });
   }
 }
-
