@@ -17,12 +17,14 @@ CREATE TABLE public.notes (
   created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
 );
 
--- Create yt_summaries table
 CREATE TABLE public.yt_summaries (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
   user_id UUID REFERENCES public.users(id) ON DELETE CASCADE NOT NULL,
   video_url TEXT NOT NULL,
+  video_id TEXT,
   summary TEXT NOT NULL,
+  transcript TEXT,
+  mode_used TEXT,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
 );
 
