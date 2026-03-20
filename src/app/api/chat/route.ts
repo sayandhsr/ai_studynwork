@@ -94,9 +94,10 @@ export async function POST(req: Request) {
       })
 
       const orModels = [
+        "x-ai/grok-2-latest",
+        "deepseek/deepseek-chat",
         "google/gemini-2.0-flash-lite-preview-02-05:free",
-        "mistralai/mistral-7b-instruct:free",
-        "deepseek/deepseek-chat"
+        "mistralai/mistral-7b-instruct:free"
       ]
 
       for (const model of orModels) {

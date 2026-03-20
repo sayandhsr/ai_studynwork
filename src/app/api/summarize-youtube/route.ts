@@ -104,8 +104,8 @@ Do NOT ask for a transcript. Do NOT invent information. Extract the best insight
 
   // --- STRATEGY 2: OPENROUTER FAILBACK ---
   const models = [
+    "x-ai/grok-2-latest",
     "deepseek/deepseek-chat", 
-    "x-ai/grok-2-latest", 
     "mistralai/mixtral-8x7b-instruct",
     "google/gemini-2.0-flash-lite-preview-02-05:free",
     "mistralai/mistral-7b-instruct:free"
