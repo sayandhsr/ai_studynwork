@@ -19,7 +19,8 @@ import {
   Home,
   Settings,
   Youtube,
-  FileEdit
+  FileEdit,
+  Bot
 } from "lucide-react"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
@@ -51,6 +52,11 @@ const navItems = [
     title: "Resume Builder",
     url: "/dashboard/resume",
     icon: FileEdit,
+  },
+  {
+    title: "AI Assistant",
+    url: "/dashboard/assistant",
+    icon: Bot,
   },
 ]
 

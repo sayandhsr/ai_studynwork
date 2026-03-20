@@ -1,213 +1,218 @@
 import { NextResponse } from "next/server"
 import { createClient } from "@/lib/supabase/server"
 
-/**
- * BULLETPROOF YOUTUBE SUMMARIZER V5
- * Logic: Strictly Sequential Fallback
- * No early returns on failure.
- */
+// --- HELPERS ---
 
 function extractVideoId(url: string) {
   try {
     const parsed = new URL(url);
-
-    // youtu.be format
-    if (parsed.hostname === "youtu.be") {
-      return parsed.pathname.slice(1);
-    }
-
-    // youtube.com format
-    if (parsed.searchParams.get("v")) {
-      return parsed.searchParams.get("v");
-    }
-
-    // shorts
-    if (parsed.pathname.includes("/shorts/")) {
-      return parsed.pathname.split("/shorts/")[1].split("?")[0];
-    }
-
+    if (parsed.hostname === "youtu.be") return parsed.pathname.slice(1).split("?")[0];
+    if (parsed.searchParams.get("v")) return parsed.searchParams.get("v")?.split("?")[0];
+    if (parsed.pathname.includes("/shorts/")) return parsed.pathname.split("/shorts/")[1].split("?")[0];
+    if (parsed.pathname.includes("/embed/")) return parsed.pathname.split("/embed/")[1].split("?")[0];
     return null;
-  } catch {
-    return null;
-  }
+  } catch { return null; }
 }
 
-// AI Synthesis Helper (Preserved for logic)
-async function synthesize(content: string, mode: string, openRouterApiKey: string, meta?: any) {
-  const systemPrompts: Record<string, string> = {
-    transcript: "Summarize this official transcript accurately. Return: Summary: (2-3 lines), Key Points: (5 bullets).",
-    audio: "Summarize this AI-Generated spoken content accurately. Return: Summary: (2-3 lines), Key Points: (5 bullets).",
-    metadata: "Based ONLY on the title/description, provide a high-level overview. Return: Overview: (2-3 lines), Possible Topics: (3 bullets). [Source: Metadata (Limited Accuracy)]"
-  };
-
-  const userPrompt = mode === "metadata" 
-    ? `Title: ${meta?.title}\nDescription: ${meta?.description}`
-    : content.substring(0, 15000);
-
+async function fetchTranscript(vId: string, apiKey: string) {
+  const url = `https://youtube-transcripts.p.rapidapi.com/transcript?videoId=${vId}&mode=auto`;
+  console.log(`[V22] Attempting transcript for ${vId}...`);
   try {
-    const res = await fetch("https://openrouter.ai/api/v1/chat/completions", {
-      method: "POST",
-      headers: { "Authorization": `Bearer ${openRouterApiKey}`, "Content-Type": "application/json", "X-Title": "Study Sanctuary" },
-      body: JSON.stringify({
-        model: "google/gemini-flash-1.5:free",
-        messages: [{ role: "system", content: systemPrompts[mode] || systemPrompts.transcript }, { role: "user", content: userPrompt }]
-      }),
-      signal: AbortSignal.timeout(15000)
+    const res = await fetch(url, {
+      headers: { "X-RapidAPI-Key": apiKey, "X-RapidAPI-Host": "youtube-transcripts.p.rapidapi.com" },
+      signal: AbortSignal.timeout(10000)
     });
+    if (!res.ok) {
+      console.log(`[V22] Transcript API blocked (e.g. not subscribed): Status ${res.status}`);
+      return null;
+    }
     const data = await res.json();
-    return data.choices?.[0]?.message?.content || "";
-  } catch (e) { return ""; }
+    return data.content || data.transcript || null;
+  } catch (e) { return null; }
 }
+
+async function fetchYoutubeMetadata(vId: string) {
+  console.log(`[V22] EMERGENCY FALLBACK: Directly fetching YouTube metadata for ${vId}`);
+  try {
+    // Attempt 1: Direct HTML scrape
+    const res = await fetch(`https://www.youtube.com/watch?v=${vId}`, {
+      headers: { "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)" },
+      signal: AbortSignal.timeout(10000)
+    });
+    if (res.ok) {
+      const html = await res.text();
+      const titleMatch = html.match(/<title>(.*?)<\/title>/);
+      const descMatch = html.match(/\"shortDescription\":\"(.*?)\"/);
+      
+      const title = titleMatch ? titleMatch[1].replace(" - YouTube", "") : "";
+      const description = descMatch ? descMatch[1].replace(/\\n/g, "\n").replace(/\\"/g, '"') : "";
+      
+      if (title || description) {
+        return `Video Title: ${title}\n\nVideo Description/Context:\n${description}`;
+      }
+    }
+  } catch(e) {}
+  
+  try {
+    // Attempt 2: Oembed API
+    const res = await fetch(`https://www.youtube.com/oembed?url=https://www.youtube.com/watch?v=${vId}&format=json`, { signal: AbortSignal.timeout(5000) });
+    if (res.ok) {
+      const data = await res.json();
+      return `Video Title: ${data.title}\nAuthor: ${data.author_name}`;
+    }
+  } catch(e) {}
+  
+  return null;
+}
+
+async function synthesize(content: string, orKey: string, geminiKey?: string) {
+  const prompt = `Summarize the following video context clearly and naturally. It may be a transcript or a description.
+
+Return EXACTLY:
+Title: (create a good title)
+Summary: (concise 2-3 sentence summary)
+Key Points:
+• (point 1)
+• (point 2)
+• (point 3)
+
+Do NOT ask for a transcript. Do NOT invent information. Extract the best insights possible from the provided context.`;
+
+  // --- STRATEGY 1: NATIVE GEMINI (PRIMARY) ---
+  if (geminiKey) {
+    try {
+      console.log("[V22] Attempting Native Gemini Synthesis...")
+      const url = `https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash-latest:generateContent?key=${geminiKey}`
+      const res = await fetch(url, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          contents: [{ role: "user", parts: [{ text: `Instructions: ${prompt}\n\nContent:\n${content.substring(0, 10000)}` }] }]
+        }),
+        signal: AbortSignal.timeout(20000)
+      })
+
+      if (res.ok) {
+        const data = await res.json()
+        const text = data.candidates?.[0]?.content?.parts?.[0]?.text
+        if (text && text.length > 50) return text.replace(/[*#`]/g, "").trim()
+      }
+    } catch (e) {
+      console.error("[V22] Gemini Native Failed:", e)
+    }
+  }
+
+  // --- STRATEGY 2: OPENROUTER FAILBACK ---
+  const models = [
+    "deepseek/deepseek-chat", 
+    "x-ai/grok-2-latest", 
+    "mistralai/mixtral-8x7b-instruct",
+    "google/gemini-2.0-flash-lite-preview-02-05:free",
+    "mistralai/mistral-7b-instruct:free"
+  ];
+  const banned = ["no transcript", "cannot summarize", "please provide", "unavailable", "missing data", "placeholder", "metadata-based analysis"];
+
+  for (const model of models) {
+    try {
+      if (!orKey) continue;
+      console.log(`[V22] Synthesizing via ${model}...`);
+      const res = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+        method: "POST",
+        headers: { "Authorization": `Bearer ${orKey}`, "Content-Type": "application/json" },
+        body: JSON.stringify({
+          model,
+          messages: [
+            { role: "system", content: "You are an expert video analyzer. Output ONLY the Title, Summary, and Key Points as requested." },
+            { role: "user", content: `Instructions: ${prompt}\n\nVideo Context:\n${content.substring(0, 5000)}` }
+          ]
+        }),
+        signal: AbortSignal.timeout(30000)
+      });
+
+      if (!res.ok) continue;
+      const data = await res.json();
+      const text = (data.choices?.[0]?.message?.content || "").replace(/[*#`]/g, "").trim();
+
+      if (text && text.length > 50 && !banned.some(b => text.toLowerCase().includes(b))) {
+        return text;
+      }
+    } catch (e) { console.log(`[V22] Synthesis error on ${model}.`); }
+  }
+
+  // FINAL PRODUCTION FAILSAFE
+  const titleFallback = content.split('\n')[0].replace('Video Title:', '').trim() || 'YouTube Video';
+  const descFallback = content.substring(0, 500).replace(/\n/g, ' ') || 'No description available.';
+  return `Title: ${titleFallback}\nSummary: ${descFallback}...\nKey Points:\n• Highlight pulled from video context\n• Extended AI synthesis currently unavailable\n• Please verify API credits`;
+}
+
+// --- MAIN ROUTE ---
 
 export async function POST(req: Request) {
   try {
-    const { url, manualTranscript } = await req.json()
-    const rapidKey = process.env.RAPIDAPI_KEY;
-    const orKey = process.env.OPENROUTER_API_KEY;
-
-    if (!url && !manualTranscript) return NextResponse.json({ error: "Input required" }, { status: 400 })
-
-    const supabase = await createClient()
-    const { data: { user } } = await supabase.auth.getUser()
-    if (!user) return NextResponse.json({ error: "Auth required" }, { status: 401 })
-
-    // 1. EXTRACT VIDEO ID (V10 FAIL-SAFE)
-    let videoId = url ? extractVideoId(url) : null
+    const { url, manualTranscript } = await req.json();
+    const rapidKey = process.env.RAPIDAPI_KEY!;
+    const orKey = process.env.OPENROUTER_API_KEY!;
     
-    if (url && (!videoId || videoId.length < 10 || videoId.length > 15)) {
-      videoId = "unknown-video"; // Use default instead of error
+    if (!url && !manualTranscript) {
+       return NextResponse.json({ summary: "Title: Initialization\nSummary: Please provide a YouTube link to begin analysis.\nKey Points:\n• Awaiting user input" });
     }
 
-    if (!videoId && !manualTranscript) {
-      videoId = "unknown-video";
+    const vId = url ? (extractVideoId(url) || "unknown") : "manual";
+    const supabase = await createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+
+    let finalContent = manualTranscript || "";
+    let modeUsed = manualTranscript ? "Manual" : "Native";
+
+    // 1. TRY TRANSCRIPT
+    if (!finalContent && vId !== "unknown") {
+      const transcript = await fetchTranscript(vId, rapidKey);
+      if (transcript && transcript.length > 50) {
+        finalContent = transcript;
+        modeUsed = "Transcript (Auto)";
+      }
     }
 
-    console.log("Video ID:", videoId)
-
-    // --- CACHE CHECK (Short-circuit success) ---
-    if (videoId && videoId !== "unknown-video") {
-      const { data: cached } = await supabase.from("yt_summaries")
-        .select("summary, mode_used").eq("video_id", videoId).maybeSingle();
-      if (cached?.summary) return NextResponse.json({ summary: cached.summary, mode_used: cached.mode_used, cached: true });
+    // 2. EMERGENCY METADATA SCRAPE (If transcript API fails/unsubscribed)
+    if (!finalContent && vId !== "unknown") {
+       const metadata = await fetchYoutubeMetadata(vId);
+       if (metadata && metadata.length > 10) {
+         finalContent = metadata;
+         modeUsed = "Direct Web Scrape";
+       }
     }
 
-    let transcript = manualTranscript || null;
-    let audioTranscript = null;
-    let metadata = null;
-    let finalSummary = "";
+    // 3. ABSOLUTE LAST RESORT
+    if (!finalContent || finalContent.length < 10) {
+      console.log("[V22] Total failure. Falling back to video ID context.");
+      finalContent = `Video ID: ${vId}. Please synthesize a descriptive overview of what a video with this URL might entail based on standard YouTube formats.`;
+      modeUsed = "Safety Fallback";
+    }
 
-    // --- 2. TRANSCRIPT STEP ---
-    if (!transcript && videoId && videoId !== "unknown-video" && rapidKey) {
+    // 3. SYNTHESIZE
+    const summary = await synthesize(finalContent, orKey, process.env.GEMINI_API_KEY);
+
+    // 5. DB SAVE
+    if (user && summary.length > 50) {
       try {
-        const res = await fetch(`https://youtube-transcript3.p.rapidapi.com/api/transcript-with-timestamps?video_id=${videoId}`, {
-          headers: { "x-rapidapi-key": rapidKey },
-          signal: AbortSignal.timeout(6000)
-        });
-        if (res.ok) {
-          const data = await res.json();
-          if (Array.isArray(data.transcript)) {
-            transcript = data.transcript.map((s: any) => s.text).join(" ");
-          }
-        }
-      } catch (err) {
-        console.log("Transcript failed");
-      }
+        await supabase.from("yt_summaries").upsert([{ 
+          user_id: user.id, 
+          video_id: vId, 
+          video_url: url || "",
+          summary, 
+          mode_used: modeUsed 
+        }], { onConflict: 'video_id' });
+        
+        const titleMatch = summary.match(/Title:\s*(.*)/i);
+        const noteTitle = titleMatch ? titleMatch[1].trim() : `Report: ${vId}`;
+        await supabase.from("notes").insert([{ user_id: user.id, title: noteTitle, content: summary }]);
+      } catch (e) { console.log("[V22] DB save skipped."); }
     }
 
-    console.log("Transcript length:", transcript?.length)
+    return NextResponse.json({ summary, mode_used: modeUsed });
 
-    if (transcript && transcript.length > 50) {
-      finalSummary = await synthesize(transcript, "transcript", orKey!);
-      if (finalSummary) {
-        await supabase.from("yt_summaries").insert([{ user_id: user.id, video_url: url, video_id: videoId, summary: finalSummary, transcript, mode_used: "transcript" }]);
-        return NextResponse.json({ summary: finalSummary, mode_used: "transcript" });
-      }
-    }
-
-    // --- 3. AUDIO STEP (MUST ALWAYS RUN IF T1 FAILS) ---
-    if (videoId && videoId !== "unknown-video" && rapidKey) {
-      try {
-        console.log("Running audio fallback");
-        const aiRes = await fetch(`https://youtube-transcripts.p.rapidapi.com/transcript?url=https://www.youtube.com/watch?v=${videoId}`, {
-          headers: { "x-rapidapi-key": rapidKey },
-          signal: AbortSignal.timeout(20000)
-        });
-        if (aiRes.ok) {
-          const aidata = await aiRes.json();
-          audioTranscript = aidata.content || aidata.transcript || "";
-        }
-      } catch (err) {
-        console.log("Audio failed:", err);
-      }
-    }
-
-    console.log("Audio transcript length:", audioTranscript?.length)
-
-    if (audioTranscript && audioTranscript.length > 50) {
-      finalSummary = await synthesize(audioTranscript, "audio", orKey!);
-      if (finalSummary) {
-        await supabase.from("yt_summaries").insert([{ user_id: user.id, video_url: url, video_id: videoId, summary: finalSummary, transcript: audioTranscript, mode_used: "audio" }]);
-        return NextResponse.json({ summary: finalSummary, mode_used: "audio" });
-      }
-    }
-
-    // --- 4. METADATA STEP (GUARANTEED WORKING) ---
-    if (videoId && videoId !== "unknown-video") {
-      try {
-        console.log("Triggering metadata fallback")
-        const res = await fetch(`https://www.youtube.com/oembed?url=https://www.youtube.com/watch?v=${videoId}&format=json`);
-        if (res.ok) {
-          metadata = await res.json();
-        }
-      } catch (err) {
-        console.log("Metadata failed:", err);
-      }
-    }
-
-    console.log("Metadata:", metadata)
-
-    if (metadata && metadata.title) {
-      finalSummary = await synthesize("", "metadata", orKey!, { title: metadata.title, description: metadata.author_name });
-      if (finalSummary) {
-        await supabase.from("yt_summaries").insert([{ user_id: user.id, video_url: url, video_id: videoId, summary: finalSummary, mode_used: "metadata" }]);
-        return NextResponse.json({ summary: finalSummary, mode_used: "metadata" });
-      }
-    }
-
-    // --- 5. FORCED FINAL FALLBACK (V10) ---
-    console.log("Forced fallback triggered");
-    const fallbackTitle = `YouTube Video (${videoId})`;
-    const forcedFallbackSummary = `
-Summary:
-This video covers concepts related to "${fallbackTitle}". While full transcript data was not available, the content likely includes informative explanations, examples, or demonstrations.
-
-Key Points:
-• The video presents structured information on its main topic
-• It likely includes explanations or demonstrations
-• Viewers can gain insights by watching the full content
-• The format suggests an educational or informational style
-• Additional details are contained within the video itself
-
-Source: Metadata (Fallback Mode)
-`;
-
-    // Persist even the fallback so it's cached
-    await supabase.from("yt_summaries").insert([{ 
-      user_id: user.id, 
-      video_url: url || "Manual", 
-      video_id: videoId, 
-      summary: forcedFallbackSummary, 
-      mode_used: "metadata" 
-    }]);
-
-    return NextResponse.json({ summary: forcedFallbackSummary, mode_used: "metadata" });
-
-  } catch (error: any) {
-    console.error("Global Fatal Error:", error);
-    // Even on error, return something stable
-    return NextResponse.json({ 
-      summary: "Extraction in progress or delayed. Please check back in a moment or try another video link.",
-      mode_used: "metadata"
-    });
+  } catch (error) {
+    console.error("[V22] Critical API Error:", error);
+    return NextResponse.json({ summary: "Title: API Offline\nSummary: The backend encountered a severe execution error.\nKey Points:\n• Please try again." });
   }
 }
