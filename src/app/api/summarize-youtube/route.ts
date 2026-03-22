@@ -182,7 +182,6 @@ Analyze the tone, core message, and specific details. Do NOT use placeholder tex
   } else {
     orResults = "OR Key Missing. "
   }
-
   throw new Error(`Synthesis Failed Details: (Groq: ${groqResults}) (Gemini: ${geminiResults}) (OR: ${orResults})`);
 }
 
@@ -190,7 +189,10 @@ Analyze the tone, core message, and specific details. Do NOT use placeholder tex
 
 export async function POST(req: NextRequest) {
   try {
-    const { videoUrl, manualTranscript } = await req.json();
+    const body = await req.json();
+    const videoUrl = body.videoUrl || body.url || "";
+    const manualTranscript = body.manualTranscript || "";
+    
     if (!videoUrl && !manualTranscript) {
       return NextResponse.json({ error: "Missing video URL or transcript" }, { status: 400 });
     }
@@ -234,7 +236,7 @@ export async function POST(req: NextRequest) {
     const summary = await synthesize(finalContent, orKey, geminiKey, groqKey);
 
     // 5. DB CACHE
-    if (user && summary.length > 50 && vId !== "manual") {
+    if (user && summary.length > 50 && vId && vId !== "manual") {
       try {
         await supabase.from("yt_summaries").upsert([{ 
           user_id: user.id, 
