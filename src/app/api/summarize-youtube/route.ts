@@ -65,26 +65,34 @@ Key Points:
 Analyze the tone, core message, and specific details. Do NOT use placeholder text.`;
 
   if (geminiKey) {
-    try {
-      const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${geminiKey}`
-      const res = await fetch(url, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          contents: [{ role: "user", parts: [{ text: `Instructions: ${prompt}\n\nContent:\n${content.substring(0, 15000)}` }] }]
-        }),
-        signal: AbortSignal.timeout(20000)
-      })
+    const geminiModels = ["gemini-2.0-flash", "gemini-1.5-flash"]
+    for (const gModel of geminiModels) {
+      try {
+        console.log(`[SYNTH] Trying Gemini Model: ${gModel}`)
+        const url = `https://generativelanguage.googleapis.com/v1beta/models/${gModel}:generateContent?key=${geminiKey}`
+        const res = await fetch(url, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            contents: [{ role: "user", parts: [{ text: `Instructions: ${prompt}\n\nContent:\n${content.substring(0, 15000)}` }] }]
+          }),
+          signal: AbortSignal.timeout(20000)
+        })
 
-      if (res.ok) {
-        const data = await res.json()
-        const text = data.candidates?.[0]?.content?.parts?.[0]?.text
-        if (text && text.length > 50) return text.replace(/[*#`]/g, "").trim()
-      } else {
-        console.error("Gemini AI Error:", await res.text())
+        if (res.ok) {
+          const data = await res.json()
+          const text = data.candidates?.[0]?.content?.parts?.[0]?.text
+          if (text && text.length > 50) {
+            console.log(`[SYNTH] Gemini Success with ${gModel}`)
+            return text.replace(/[*#`]/g, "").trim()
+          }
+        } else {
+          const errText = await res.text()
+          console.error(`[SYNTH] Gemini ${gModel} Error (Status ${res.status}):`, errText)
+        }
+      } catch (e: any) {
+        console.error(`[SYNTH] Gemini ${gModel} Exception:`, e.message)
       }
-    } catch (e) {
-      console.error("Gemini AI Exception:", e)
     }
   }
 

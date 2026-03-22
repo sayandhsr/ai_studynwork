@@ -27,27 +27,34 @@ Return ONLY the optimized JSON, no conversational text.`
 
     // 1. Try Native Gemini API first (Free & Fast)
     if (geminiKey) {
-      try {
-        const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${geminiKey}`
-        const res = await fetch(url, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            contents: [{ role: "user", parts: [{ text: prompt }] }]
+      const geminiModels = ["gemini-2.0-flash", "gemini-1.5-flash"]
+      for (const gModel of geminiModels) {
+        try {
+          console.log(`[OPT] Trying Gemini Model: ${gModel}`)
+          const url = `https://generativelanguage.googleapis.com/v1beta/models/${gModel}:generateContent?key=${geminiKey}`
+          const res = await fetch(url, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              contents: [{ role: "user", parts: [{ text: prompt }] }]
+            }),
+            signal: AbortSignal.timeout(20000)
           })
-        })
 
-        if (res.ok) {
-          const aiData = await res.json()
-          const text = aiData.candidates?.[0]?.content?.parts?.[0]?.text || ""
-          const jsonStr = text.replace(/```json/g, "").replace(/```/g, "").trim()
-          optimizedData = JSON.parse(jsonStr)
-        } else {
-          aiError = await res.text()
-          console.error("Native Gemini API Error:", aiError)
+          if (res.ok) {
+            const aiData = await res.json()
+            const text = aiData.candidates?.[0]?.content?.parts?.[0]?.text || ""
+            const jsonStr = text.replace(/```json/g, "").replace(/```/g, "").trim()
+            optimizedData = JSON.parse(jsonStr)
+            console.log(`[OPT] Gemini Success with ${gModel}`)
+            break // Success!
+          } else {
+            aiError = await res.text()
+            console.error(`[OPT] Gemini ${gModel} Error (Status ${res.status}):`, aiError)
+          }
+        } catch (e: any) {
+          console.error(`[OPT] Gemini ${gModel} Exception:`, e.message)
         }
-      } catch (e: any) {
-        console.error("Native Gemini Exception:", e)
       }
     }
 
