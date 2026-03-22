@@ -80,8 +80,12 @@ Analyze the tone, core message, and specific details. Do NOT use placeholder tex
         const data = await res.json()
         const text = data.candidates?.[0]?.content?.parts?.[0]?.text
         if (text && text.length > 50) return text.replace(/[*#`]/g, "").trim()
+      } else {
+        console.error("Gemini AI Error:", await res.text())
       }
-    } catch (e) {}
+    } catch (e) {
+      console.error("Gemini AI Exception:", e)
+    }
   }
 
   if (orKey) {
@@ -102,12 +106,16 @@ Analyze the tone, core message, and specific details. Do NOT use placeholder tex
           const data = await res.json();
           const text = (data.choices?.[0]?.message?.content || "").replace(/[*#`]/g, "").trim();
           if (text && text.length > 50) return text;
+        } else {
+           console.error(`OpenRouter Error (${model}):`, await res.text());
         }
-      } catch (e) {}
+      } catch (e) {
+         console.error(`OpenRouter Exception (${model}):`, e);
+      }
     }
   }
 
-  return `Title: Analysis of Video Content\nSummary: The video provides a detailed exploration of the subject, covering several key aspects from a professional perspective. The discussion delves into the core principles and offers practical insights for viewers.\nKey Points:\n• Comprehensive overview of the main topic\n• Practical examples and case studies discussed\n• Strategic recommendations for implementation\n• Future trends and industry impact explored\n• Summary of key takeaways and actionable items`;
+  throw new Error("All AI synthesis models failed. Please check your API keys or limits.");
 }
 
 // --- MAIN ROUTE ---
@@ -171,8 +179,9 @@ export async function POST(req: Request) {
 
     return NextResponse.json({ summary, mode_used: modeUsed });
 
-  } catch (error) {
+  } catch (error: any) {
     console.error("[V22] Critical API Error:", error);
-    return NextResponse.json({ summary: "Title: API Offline\nSummary: The backend encountered a severe execution error.\nKey Points:\n• Please try again." });
+    const errorMessage = error?.message || "The backend encountered a severe execution error.";
+    return NextResponse.json({ summary: `Title: Synthesis Failed\nSummary: ${errorMessage}\nKey Points:\n• Please ensure your API keys have sufficient credits.\n• Only Gemini Flash-Lite and Mistral are configured on OpenRouter.` });
   }
 }
