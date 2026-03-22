@@ -15,22 +15,40 @@ function extractVideoId(url: string) {
   } catch { return null; }
 }
 
-async function fetchTranscript(vId: string) {
-  console.log(`Attempting transcript fetch for ${vId}...`);
+async function fetchTranscriptFromRapidAPI(vId: string, apiKey: string) {
+  if (!apiKey) return null;
+  console.log(`[TRANSCRIPT] Trying RapidAPI for ${vId}...`);
   try {
-    const transcript = await YoutubeTranscript.fetchTranscript(vId);
-    return transcript.map(t => t.text).join(" ");
-  } catch (e) {
-    console.error(`Transcript fetch failed for ${vId}:`, e);
-    return null;
+    const res = await fetch(`https://youtube-v3-alternative.p.rapidapi.com/transcript?id=${vId}`, {
+      method: "GET",
+      headers: {
+        "X-RapidAPI-Key": apiKey,
+        "X-RapidAPI-Host": "youtube-v3-alternative.p.rapidapi.com"
+      },
+      signal: AbortSignal.timeout(15000)
+    });
+    if (res.ok) {
+      const data = await res.json();
+      // The API structure varies, but usually it's an array of {text, start, duration}
+      if (Array.isArray(data)) {
+        return data.map(t => t.text).join(" ");
+      }
+      if (data.transcript && Array.isArray(data.transcript)) {
+         return data.transcript.map((t: any) => t.text).join(" ");
+      }
+    }
+    console.error(`[TRANSCRIPT] RapidAPI failed for ${vId}:`, await res.text());
+  } catch (e: any) {
+    console.error(`[TRANSCRIPT] RapidAPI error:`, e.message);
   }
+  return null;
 }
 
 async function fetchYoutubeMetadata(vId: string) {
-  console.log(`Fallback: Fetching YouTube metadata for ${vId}`);
+  console.log(`[METADATA] Fetching YouTube metadata for ${vId}`);
   try {
     const res = await fetch(`https://www.youtube.com/watch?v=${vId}`, {
-      headers: { "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)" },
+      headers: { "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36" },
       signal: AbortSignal.timeout(10000)
     });
     if (res.ok) {
@@ -38,19 +56,25 @@ async function fetchYoutubeMetadata(vId: string) {
       const titleMatch = html.match(/<title>(.*?)<\/title>/);
       const descMatch = html.match(/\"shortDescription\":\"(.*?)\"/);
       
-      const title = titleMatch ? titleMatch[1].replace(" - YouTube", "") : "";
-      const description = descMatch ? descMatch[1].replace(/\\n/g, "\n").replace(/\\"/g, '"') : "";
+      let title = titleMatch ? titleMatch[1].replace(" - YouTube", "") : "";
+      let description = descMatch ? descMatch[1].replace(/\\n/g, "\n").replace(/\\"/g, '"') : "";
       
+      // Try to find title in og:title if <title> was weird
+      if (!title) {
+        const ogTitleMatch = html.match(/property=\"og:title\" content=\"(.*?)\"/);
+        if (ogTitleMatch) title = ogTitleMatch[1];
+      }
+
       if (title || description) {
-        return `Video Title: ${title}\n\nVideo Description:\n${description}`;
+        return { title, description, full: `Video Title: ${title}\n\nVideo Description:\n${description}` };
       }
     }
   } catch(e) {}
   return null;
 }
 
-async function synthesize(content: string, orKey: string, geminiKey?: string, groqKey?: string) {
-  const prompt = `You are an expert content synthesist. Summarize the following video transcript/content into 5-8 highly engaging, structured bullet points. 
+async function synthesize(content: string, orKey: string, geminiKey?: string, groqKey?: string, videoTitle?: string) {
+  const prompt = `You are an expert content synthesist. ${videoTitle ? `The video title is "${videoTitle}". ` : ""}Summarize the following video transcript/content into 5-8 highly engaging, structured bullet points. 
 Focus on the most actionable insights and "aha!" moments.
 Format:
 Title: [A Punchy, Curiosity-Gap Title]
@@ -58,7 +82,7 @@ Summary: [1-2 sentences of high-level context]
 Key Points:
 • [Point 1]
 • [Point 2]...
-Analyze the tone, core message, and specific details. Do NOT use placeholder text.`;
+Analyze the tone, core message, and specific details. Do NOT make up information. If the content provided is too short or doesn't look like a transcript, say "I'm sorry, I couldn't retrieve the full transcript for this video."`;
 
   // 1. Try Groq (Fastest & most reliable for free tier)
   let groqResults = ""
@@ -208,35 +232,52 @@ export async function POST(req: NextRequest) {
     let finalContent = manualTranscript || "";
     let modeUsed = manualTranscript ? "Manual" : "Native";
 
-    // 1. TRY TRANSCRIPT
+    // 1. TRY NATIVE TRANSCRIPT (Free but often blocked on Vercel)
     if (!finalContent && vId && vId !== "manual" && vId !== "unknown") {
-      const transcript = await fetchTranscript(vId);
-      if (transcript && transcript.length > 50) {
-        finalContent = transcript;
-        modeUsed = "Transcript (Auto)";
+      try {
+        const transcript = await YoutubeTranscript.fetchTranscript(vId);
+        if (transcript && transcript.length > 0) {
+          finalContent = transcript.map(t => t.text).join(" ");
+          modeUsed = "Native Transcript";
+        }
+      } catch (e) {
+        console.error(`[TRANSCRIPT] Native fetch failed for ${vId}`);
       }
     }
 
-    // 2. EMERGENCY METADATA SCRAPE
-    if (!finalContent && vId && vId !== "manual" && vId !== "unknown") {
+    // 2. TRY RAPIDAPI TRANSCRIPT (Much more reliable)
+    if (!finalContent && vId && vId !== "manual" && vId !== "unknown" && orKey) {
+      const rapidTranscript = await fetchTranscriptFromRapidAPI(vId, process.env.RAPIDAPI_KEY || "");
+      if (rapidTranscript) {
+        finalContent = rapidTranscript;
+        modeUsed = "RapidAPI Transcript";
+      }
+    }
+
+    // 3. EMERGENCY METADATA SCRAPE (Title + Description)
+    let videoTitle = "";
+    if (vId && vId !== "manual" && vId !== "unknown") {
        const metadata = await fetchYoutubeMetadata(vId);
-       if (metadata && metadata.length > 10) {
-         finalContent = metadata;
-         modeUsed = "Direct Web Scrape";
+       if (metadata) {
+         videoTitle = metadata.title;
+         if (!finalContent && metadata.full.length > 50) {
+           finalContent = metadata.full;
+           modeUsed = "Metadata Scrape";
+         }
        }
     }
 
-    // 3. ABSOLUTE LAST RESORT
+    // 4. ABSOLUTE LAST RESORT (Don't hallucinate if no data)
     if (!finalContent || finalContent.length < 10) {
-      finalContent = vId !== "manual" ? `Video ID: ${vId}. Professional analysis based on video identification.` : "Awaiting detailed content.";
-      modeUsed = "Safety Fallback";
+      finalContent = "Error: No transcript or metadata could be retrieved for this video.";
+      modeUsed = "Error State";
     }
 
-    // 4. SYNTHESIZE
-    const summary = await synthesize(finalContent, orKey, geminiKey, groqKey);
+    // 5. SYNTHESIZE
+    const summary = await synthesize(finalContent, orKey, geminiKey, groqKey, videoTitle);
 
-    // 5. DB CACHE
-    if (user && summary.length > 50 && vId && vId !== "manual") {
+    // 6. DB CACHE
+    if (user && summary.length > 50 && vId && vId !== "manual" && !summary.includes("I'm sorry")) {
       try {
         await supabase.from("yt_summaries").upsert([{ 
           user_id: user.id, 
@@ -254,7 +295,7 @@ export async function POST(req: NextRequest) {
     console.error("[V22] Critical API Error:", error);
     const errorMessage = error?.message || "The backend encountered a severe execution error.";
     return NextResponse.json({ 
-      summary: `Title: Synthesis Failed\nSummary: ${errorMessage}\nKey Points:\n• Please ensure your API keys have sufficient credits.\n• Only Gemini Flash-Lite and Mistral are configured on OpenRouter.` 
+      summary: `Title: Synthesis Failed\nSummary: ${errorMessage}\nKey Points:\n• Please ensure your API keys have sufficient credits.\n• If the video is very new, transcripts may not be available yet.` 
     });
   }
 }
