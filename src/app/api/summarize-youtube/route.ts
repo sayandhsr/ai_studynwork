@@ -22,6 +22,7 @@ async function fetchTranscriptFromRapidAPI(vId: string, apiKey: string) {
   if (!apiKey) return null;
   console.log(`[TRANSCRIPT] Trying RapidAPI for ${vId}...`);
   try {
+    // Try the most popular "YouTube v3 Alternative" transcript endpoint
     const res = await fetch(`https://youtube-v3-alternative.p.rapidapi.com/transcript?id=${vId}`, {
       method: "GET",
       headers: {
@@ -30,19 +31,64 @@ async function fetchTranscriptFromRapidAPI(vId: string, apiKey: string) {
       },
       signal: AbortSignal.timeout(15000)
     });
+    
     if (res.ok) {
       const data = await res.json();
-      // The API structure varies, but usually it's an array of {text, start, duration}
+      console.log(`[TRANSCRIPT] RapidAPI Data Received`);
+      
+      // Handle array of {text, start, duration}
       if (Array.isArray(data)) {
         return data.map(t => t.text).join(" ");
       }
+      // Handle { transcript: [...] }
       if (data.transcript && Array.isArray(data.transcript)) {
          return data.transcript.map((t: any) => t.text).join(" ");
       }
+      // Handle { segments: [...] }
+      if (data.segments && Array.isArray(data.segments)) {
+         return data.segments.map((t: any) => t.text || t.snippet).join(" ");
+      }
     }
-    console.error(`[TRANSCRIPT] RapidAPI failed for ${vId}:`, await res.text());
+    const errText = await res.text();
+    console.error(`[TRANSCRIPT] RapidAPI failed for ${vId}:`, errText);
   } catch (e: any) {
     console.error(`[TRANSCRIPT] RapidAPI error:`, e.message);
+  }
+  return null;
+}
+
+async function fetchVideoDetailsFromRapidAPI(vId: string, apiKey: string) {
+  if (!apiKey) return null;
+  const hosts = ["youtube-v3-alternative.p.rapidapi.com", "youtube-v31.p.rapidapi.com"];
+  
+  for (const host of hosts) {
+    try {
+      console.log(`[METADATA] Trying RapidAPI on ${host}...`);
+      const url = host.includes("alternative") 
+        ? `https://${host}/video?id=${vId}`
+        : `https://${host}/videos?part=snippet&id=${vId}`;
+
+      const res = await fetch(url, {
+        method: "GET",
+        headers: { "X-RapidAPI-Key": apiKey, "X-RapidAPI-Host": host },
+        signal: AbortSignal.timeout(10000)
+      });
+
+      if (res.ok) {
+        const data = await res.json();
+        // Handle alternative API structure
+        if (data.title && data.title !== "YouTube") {
+          return { title: data.title, description: data.description || "" };
+        }
+        // Handle v31/standard structure
+        const item = data.items?.[0]?.snippet;
+        if (item && item.title && item.title !== "YouTube") {
+          return { title: item.title, description: item.description || "" };
+        }
+      }
+    } catch (e) {
+      console.error(`[METADATA] RapidAPI Metadata failed for ${host}`);
+    }
   }
   return null;
 }
@@ -286,15 +332,28 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    // 5. EMERGENCY METADATA SCRAPE (Title + Description)
+    // 5. METADATA SCRAPE (Title + Description)
     let videoTitle = "";
     if (vId && vId !== "manual" && vId !== "unknown") {
-       const metadata = await fetchYoutubeMetadata(vId);
-       if (metadata) {
-         videoTitle = metadata.title;
-         if (!finalContent && metadata.full.length > 50) {
-           finalContent = metadata.full;
-           modeUsed = "Metadata Scrape";
+       // A. Try RapidAPI for metadata (Super reliable)
+       const rapidMeta = await fetchVideoDetailsFromRapidAPI(vId, process.env.RAPIDAPI_KEY || "");
+       if (rapidMeta) {
+         videoTitle = rapidMeta.title;
+         if (!finalContent && rapidMeta.description) {
+           finalContent = `Video Title: ${rapidMeta.title}\n\nVideo Description:\n${rapidMeta.description}`;
+           modeUsed = "RapidAPI Metadata";
+         }
+       }
+
+       // B. Fallback to direct scrape if still no title
+       if (!videoTitle || !finalContent) {
+         const metadata = await fetchYoutubeMetadata(vId);
+         if (metadata) {
+           videoTitle = videoTitle || metadata.title;
+           if (!finalContent && metadata.full.length > 50) {
+             finalContent = metadata.full;
+             modeUsed = "Metadata Scrape";
+           }
          }
        }
     }
@@ -303,7 +362,7 @@ export async function POST(req: NextRequest) {
     if (!finalContent || finalContent.length < 20) {
       console.warn(`[TRANSCRIPT] STOPPING: No valid content found for ${vId}`);
       return NextResponse.json({ 
-        summary: `Title: Transcript Blocked\nSummary: YouTube is currently blocking our automated access to this video's transcript. \nKey Points:\n• Try again with a different video.\n• Or, paste the transcript manually in the "Manual Scribe" tab.`,
+        summary: `Title: Transcript Blocked\nSummary: YouTube is currently blocking our automated access to this video's transcript. \nKey Points:\n• Direct transcripts for this video are unavailable.\n• You can manually paste the transcript in the "Manual Scribe" tab.\n• Or try a different video link.`,
         mode_used: "Failure"
       });
     }

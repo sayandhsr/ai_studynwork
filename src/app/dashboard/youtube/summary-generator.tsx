@@ -111,6 +111,15 @@ export function SummaryGenerator() {
     }
   }
 
+  // Parse sections safely
+  const title = lastResult?.summary.split("\n").find(l => l.toLowerCase().startsWith("title:"))?.split(":")[1]?.trim() || "Insights Found";
+  const hasSummary = lastResult?.summary.includes("Summary:");
+  const summaryText = hasSummary ? lastResult?.summary.split("Summary:")[1]?.split("Key Points:")[0]?.trim() : null;
+  const keyPoints = (lastResult?.summary.includes("Key Points:") 
+    ? lastResult?.summary.split("Key Points:")[1]?.split("\n") 
+    : lastResult?.summary.split("\n").filter(l => l.trim().startsWith("•")))
+    ?.filter(l => l.trim().startsWith("•")) || [];
+
   return (
     <Card className="rounded-none border-border/40 border bg-card/50 shadow-2xl relative overflow-hidden">
       <div className="absolute top-0 right-0 p-4 opacity-10">
@@ -186,36 +195,38 @@ export function SummaryGenerator() {
           >
             <div className="p-10 rounded-none border border-primary/20 bg-primary/5 relative overflow-hidden space-y-10">
               <div className="space-y-12">
-                {/* Title & Summary */}
                 <div className="space-y-6">
                   <h3 className="text-4xl font-heading italic tracking-tight text-foreground/90 leading-tight">
-                    {lastResult.summary.split("\n").find(l => l.toLowerCase().startsWith("title:"))?.split(":")[1]?.trim() || "Video Summary"}
+                    {title}
                   </h3>
-                  <p className="text-xl font-light italic text-foreground/70 leading-relaxed border-l-2 border-primary/30 pl-8">
-                    {lastResult.summary.includes("Summary:") 
-                      ? lastResult.summary.split("Summary:")[1]?.split("Key Points:")[0]?.trim() 
-                      : lastResult.summary.split("\n").slice(1, 4).join(" ").substring(0, 300)}
-                  </p>
+                  
+                  {hasSummary ? (
+                    <>
+                      <p className="text-xl font-light italic text-foreground/70 leading-relaxed border-l-2 border-primary/30 pl-8">
+                        {summaryText}
+                      </p>
+                      
+                      <ul className="grid gap-6">
+                        {keyPoints.map((point, i) => (
+                          <motion.li 
+                            key={i}
+                            initial={{ opacity: 0, x: -10 }}
+                            animate={{ opacity: 1, x: 0 }}
+                            transition={{ delay: i * 0.1 }}
+                            className="flex gap-4 text-sm font-light italic leading-relaxed text-foreground/80 group"
+                          >
+                            <span className="text-primary mt-1.5 opacity-50 group-hover:opacity-100 transition-opacity">•</span>
+                            {point.replace("•", "").trim()}
+                          </motion.li>
+                        ))}
+                      </ul>
+                    </>
+                  ) : (
+                    <div className="text-lg font-light italic text-foreground/80 leading-relaxed whitespace-pre-wrap border-l-2 border-primary/30 pl-8">
+                      {lastResult.summary}
+                    </div>
+                  )}
                 </div>
-
-                {/* Key Points */}
-                <ul className="grid gap-6">
-                  {(lastResult.summary.includes("Key Points:") 
-                    ? lastResult.summary.split("Key Points:")[1]?.split("\n") 
-                    : lastResult.summary.split("\n").filter(l => l.trim().startsWith("•")))
-                    ?.filter(l => l.trim().startsWith("•")).map((point, i) => (
-                    <motion.li 
-                      key={i}
-                      initial={{ opacity: 0, x: -10 }}
-                      animate={{ opacity: 1, x: 0 }}
-                      transition={{ delay: i * 0.1 }}
-                      className="flex gap-4 text-sm font-light italic leading-relaxed text-foreground/80 group"
-                    >
-                      <span className="text-primary mt-1.5 opacity-50 group-hover:opacity-100 transition-opacity">•</span>
-                      {point.replace("•", "").trim()}
-                    </motion.li>
-                  ))}
-                </ul>
               </div>
 
               <div className="pt-10 flex flex-col sm:flex-row gap-4 border-t border-primary/10">
