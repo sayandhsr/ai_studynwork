@@ -66,11 +66,15 @@ Analyze the tone, core message, and specific details. Do NOT use placeholder tex
 
   let geminiResults = ""
   if (geminiKey) {
-    const geminiModels = ["gemini-2.0-flash", "gemini-1.5-flash"]
-    for (const gModel of geminiModels) {
+    const geminiAttempts = [
+      { model: "gemini-2.0-flash", version: "v1beta" },
+      { model: "gemini-1.5-flash", version: "v1" },
+      { model: "gemini-1.5-flash", version: "v1beta" }
+    ]
+    for (const attempt of geminiAttempts) {
       try {
-        console.log(`[SYNTH] Trying Gemini Model: ${gModel}`)
-        const url = `https://generativelanguage.googleapis.com/v1beta/models/${gModel}:generateContent?key=${geminiKey}`
+        console.log(`[SYNTH] Trying Gemini: ${attempt.model} (${attempt.version})`)
+        const url = `https://generativelanguage.googleapis.com/${attempt.version}/models/${attempt.model}:generateContent?key=${geminiKey}`
         const res = await fetch(url, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -84,17 +88,17 @@ Analyze the tone, core message, and specific details. Do NOT use placeholder tex
           const data = await res.json()
           const text = data.candidates?.[0]?.content?.parts?.[0]?.text
           if (text && text.length > 50) {
-            console.log(`[SYNTH] Gemini Success with ${gModel}`)
+            console.log(`[SYNTH] Gemini Success with ${attempt.model}`)
             return text.replace(/[*#`]/g, "").trim()
           }
         } else {
           const errText = await res.text()
-          console.error(`[SYNTH] Gemini ${gModel} Error (Status ${res.status}):`, errText)
-          geminiResults += `${gModel}: Error ${res.status}. `
+          console.error(`[SYNTH] Gemini ${attempt.model} Error (Status ${res.status}):`, errText)
+          geminiResults += `${attempt.model}: Error ${res.status}. `
         }
       } catch (e: any) {
-        console.error(`[SYNTH] Gemini ${gModel} Exception:`, e.message)
-        geminiResults += `${gModel}: ${e.message}. `
+        console.error(`[SYNTH] Gemini ${attempt.model} Exception:`, e.message)
+        geminiResults += `${attempt.model}: ${e.message}. `
       }
     }
   } else {
@@ -103,9 +107,15 @@ Analyze the tone, core message, and specific details. Do NOT use placeholder tex
 
   let orResults = ""
   if (orKey) {
-    const models = ["google/gemini-2.0-flash-lite-preview-02-05:free", "mistralai/mistral-7b-instruct:free"];
-    for (const model of models) {
+    const orModels = [
+      "google/gemini-2.0-flash-lite-preview-02-05:free",
+      "google/gemini-flash-1.5-exp:free",
+      "mistralai/mistral-7b-instruct:free",
+      "openchat/openchat-7b:free"
+    ];
+    for (const model of orModels) {
       try {
+        console.log(`[SYNTH] Trying OpenRouter: ${model}`)
         const res = await fetch("https://openrouter.ai/api/v1/chat/completions", {
           method: "POST",
           headers: { "Authorization": `Bearer ${orKey}`, "Content-Type": "application/json" },
@@ -119,14 +129,17 @@ Analyze the tone, core message, and specific details. Do NOT use placeholder tex
         if (res.ok) {
           const data = await res.json();
           const text = (data.choices?.[0]?.message?.content || "").replace(/[*#`]/g, "").trim();
-          if (text && text.length > 50) return text;
+          if (text && text.length > 50) {
+             console.log(`[SYNTH] OpenRouter Success with ${model}`)
+             return text;
+          }
         } else {
            const errText = await res.text()
-           console.error(`OpenRouter Error (${model}):`, errText);
+           console.error(`[SYNTH] OR Error (${model}):`, errText);
            orResults += `${model}: Error ${res.status}. `
         }
       } catch (e: any) {
-         console.error(`OpenRouter Exception (${model}):`, e.message);
+         console.error(`[SYNTH] OR Exception (${model}):`, e.message);
          orResults += `${model}: ${e.message}. `
       }
     }
