@@ -12,6 +12,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { ThemeToggle } from "./theme-toggle"
+import { FontPicker } from "./font-picker"
 import { SidebarTrigger } from "@/components/ui/sidebar"
 import { LogOut, User as UserIcon } from "lucide-react"
 import { useRouter } from "next/navigation"
@@ -50,6 +51,7 @@ export function TopNav({ user }: TopNavProps) {
       </div>
       
       <div className="flex items-center gap-6">
+        <FontPicker />
         <ThemeToggle />
         
         <DropdownMenu>

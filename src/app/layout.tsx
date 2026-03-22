@@ -1,8 +1,9 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono, EB_Garamond, Playfair_Display } from "next/font/google";
+import { Geist, Geist_Mono, EB_Garamond, Playfair_Display, Inter, Roboto, Lora, Libre_Baskerville, JetBrains_Mono } from "next/font/google";
 import "./globals.css";
 import { ThemeProvider } from "@/components/theme-provider";
 import { TooltipProvider } from "@/components/ui/tooltip";
+import { FontProvider } from "@/components/font-provider";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -26,6 +27,33 @@ const playfair = Playfair_Display({
   display: "swap",
 });
 
+const inter = Inter({
+  variable: "--font-inter",
+  subsets: ["latin"],
+});
+
+const roboto = Roboto({
+  variable: "--font-roboto",
+  subsets: ["latin"],
+  weight: ["100", "300", "400", "500", "700", "900"],
+});
+
+const lora = Lora({
+  variable: "--font-lora",
+  subsets: ["latin"],
+});
+
+const libreBaskerville = Libre_Baskerville({
+  variable: "--font-baskerville",
+  subsets: ["latin"],
+  weight: ["400", "700"],
+});
+
+const jetbrainsMono = JetBrains_Mono({
+  variable: "--font-jetbrains",
+  subsets: ["latin"],
+});
+
 export const metadata: Metadata = {
   title: "AI Productivity Hub | Human-Crafted Learning",
   description: "Capture wisdom with the warmth of a classic journal and the precision of AI.",
@@ -37,7 +65,9 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" suppressHydrationWarning className={`${ebGaramond.variable} ${playfair.variable}`}>
+    <html lang="en" suppressHydrationWarning 
+      className={`${ebGaramond.variable} ${playfair.variable} ${inter.variable} ${roboto.variable} ${lora.variable} ${libreBaskerville.variable} ${jetbrainsMono.variable}`}
+    >
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
         suppressHydrationWarning
@@ -49,7 +79,9 @@ export default function RootLayout({
           disableTransitionOnChange
           themes={["luxury", "light", "dark"]}
         >
-          <TooltipProvider>{children}</TooltipProvider>
+          <FontProvider>
+            <TooltipProvider>{children}</TooltipProvider>
+          </FontProvider>
         </ThemeProvider>
       </body>
     </html>

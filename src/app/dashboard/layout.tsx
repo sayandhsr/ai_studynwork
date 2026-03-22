@@ -16,15 +16,15 @@ export default async function DashboardLayout({
     data: { user },
   } = await supabase.auth.getUser()
 
-  if (!user) {
-    redirect("/")
-  }
-
   // Get user profile from metadata or db ideally
-  const profile = {
+  const profile = user ? {
     name: user.user_metadata?.full_name || null,
     email: user.email || null,
     avatar_url: user.user_metadata?.avatar_url || null,
+  } : {
+    name: "Guest Explorer",
+    email: null,
+    avatar_url: null,
   }
 
   return (

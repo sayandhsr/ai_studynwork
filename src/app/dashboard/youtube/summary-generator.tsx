@@ -6,7 +6,7 @@ import { createClient } from "@/lib/supabase/client"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Card, CardContent } from "@/components/ui/card"
-import { Youtube, Wand2, Loader2, Sparkles } from "lucide-react"
+import { Youtube, Wand2, Loader2, Sparkles, CheckCircle2, History, ChevronRight } from "lucide-react"
 import { motion } from "framer-motion"
 
 import { Textarea } from "@/components/ui/textarea"
@@ -21,13 +21,13 @@ export function SummaryGenerator() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState("")
   const [progressStep, setProgressStep] = useState(0)
+  const [lastResult, setLastResult] = useState<{ summary: string; mode_used: string } | null>(null)
+  const [savingNote, setSavingNote] = useState(false)
+  const [savedSuccess, setSavedSuccess] = useState(false)
 
   const steps = [
-    "Validating Knowledge Cache...",
-    "Extracting Transcript Wisdom...",
-    "Harvesting Metadata Insights...",
-    "Analyzing Audio via AI (Tier 3)...",
-    "Finalizing Study Manifesto..."
+    "Fetching transcript...",
+    "Generating summary..."
   ]
 
   const handleGenerate = async (e: React.FormEvent) => {
@@ -47,6 +47,7 @@ export function SummaryGenerator() {
     }
 
     setError("")
+    setLastResult(null)
     setLoading(true)
     setProgressStep(0)
 
@@ -70,6 +71,7 @@ export function SummaryGenerator() {
         throw new Error(data.error || "Failed to generate summary")
       }
 
+      setLastResult({ summary: data.summary, mode_used: data.mode_used })
       setUrl("")
       setManualTranscript("")
       router.refresh()
@@ -78,6 +80,34 @@ export function SummaryGenerator() {
     } finally {
       clearInterval(progressInterval)
       setLoading(false)
+    }
+  }
+
+  const handleSaveToNotes = async () => {
+    if (!lastResult || savingNote) return;
+    setSavingNote(true)
+    setError("")
+    try {
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) throw new Error("Auth required to save notes")
+
+      const titleMatch = lastResult.summary.match(/Title:\s*(.*)/i);
+      const noteTitle = titleMatch ? titleMatch[1].trim() : `YouTube Report`;
+      
+      const { error: dbError } = await supabase.from("notes").insert([{ 
+        user_id: user.id, 
+        title: noteTitle, 
+        content: lastResult.summary 
+      }])
+
+      if (dbError) throw dbError;
+      
+      setSavedSuccess(true)
+      setTimeout(() => setSavedSuccess(false), 3000)
+    } catch (err: any) {
+      setError(err.message || "Failed to save note.")
+    } finally {
+      setSavingNote(false)
     }
   }
 
@@ -131,39 +161,90 @@ export function SummaryGenerator() {
               {loading ? (
                 <div className="flex flex-col items-start leading-none gap-1">
                   <span className="text-[10px]">{steps[progressStep]}</span>
-                  <span className="text-[8px] opacity-60 animate-pulse">
-                    {progressStep === 3 ? "Analyzing audio using AI (may take a few seconds)" : "Universal Zero-Failure Sequence..."}
-                  </span>
                 </div>
               ) : "Distill Insights"}
               <div className="absolute inset-0 bg-white/5 opacity-0 group-hover:opacity-100 transition-opacity skew-x-12 translate-x-full group-hover:translate-x-0 duration-700" />
             </Button>
           </form>
+
+          {error && (
+            <motion.div 
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: "auto" }}
+              className="p-6 bg-red-500/10 border border-red-500/20 text-red-500 text-sm font-light italic text-center rounded-none"
+            >
+              ⚠️ {error}
+            </motion.div>
+          )}
         </div>
         
-        {error && (
+        {lastResult && (
           <motion.div 
-            initial={{ opacity: 0, y: 10 }}
+            initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            className="mt-8 p-6 rounded-none bg-destructive/5 border border-destructive/20 space-y-4 font-serif"
+            className="mt-12 space-y-8"
           >
-            <p className="text-xs font-bold uppercase tracking-[0.3em] text-destructive flex items-center gap-3">
-              <span className="flex h-1.5 w-1.5 rounded-full bg-destructive" />
-              Extraction Interrupted
-            </p>
-            <p className="text-base italic font-light opacity-80 leading-relaxed">
-              {error}
-            </p>
-            {error.includes("Manual Mode") && (
-              <Button 
-                variant="outline" 
-                size="sm" 
-                onClick={() => setMode("manual")}
-                className="w-full border-destructive/20 hover:bg-destructive/10 text-destructive font-bold uppercase tracking-widest text-[10px] h-12 rounded-none"
-              >
-                Switch to Manual Scribe
-              </Button>
-            )}
+            <div className="p-10 rounded-none border border-primary/20 bg-primary/5 relative overflow-hidden space-y-10">
+              <div className="space-y-12">
+                {/* Title & Summary */}
+                <div className="space-y-6">
+                  <h3 className="text-4xl font-heading italic tracking-tight text-foreground/90 leading-tight">
+                    {lastResult.summary.split("\n").find(l => l.toLowerCase().startsWith("title:"))?.split(":")[1]?.trim() || "Video Summary"}
+                  </h3>
+                  <p className="text-xl font-light italic text-foreground/70 leading-relaxed border-l-2 border-primary/30 pl-8">
+                    {lastResult.summary.includes("Summary:") 
+                      ? lastResult.summary.split("Summary:")[1]?.split("Key Points:")[0]?.trim() 
+                      : lastResult.summary.split("\n").slice(1, 4).join(" ").substring(0, 300)}
+                  </p>
+                </div>
+
+                {/* Key Points */}
+                <ul className="grid gap-6">
+                  {(lastResult.summary.includes("Key Points:") 
+                    ? lastResult.summary.split("Key Points:")[1]?.split("\n") 
+                    : lastResult.summary.split("\n").filter(l => l.trim().startsWith("•")))
+                    ?.filter(l => l.trim().startsWith("•")).map((point, i) => (
+                    <motion.li 
+                      key={i}
+                      initial={{ opacity: 0, x: -10 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      transition={{ delay: i * 0.1 }}
+                      className="flex gap-4 text-sm font-light italic leading-relaxed text-foreground/80 group"
+                    >
+                      <span className="text-primary mt-1.5 opacity-50 group-hover:opacity-100 transition-opacity">•</span>
+                      {point.replace("•", "").trim()}
+                    </motion.li>
+                  ))}
+                </ul>
+              </div>
+
+              <div className="pt-10 flex flex-col sm:flex-row gap-4 border-t border-primary/10">
+                <Button 
+                   onClick={handleSaveToNotes}
+                   disabled={savingNote || savedSuccess}
+                   className="rounded-none bg-primary hover:bg-primary/90 text-primary-foreground h-14 uppercase tracking-[0.3em] text-[10px] font-bold transition-all px-8 border border-primary/20"
+                >
+                   {savingNote ? <Loader2 className="h-4 w-4 animate-spin mr-3" /> : (savedSuccess ? <CheckCircle2 className="h-4 w-4 mr-3" /> : <Sparkles className="h-4 w-4 mr-3" />)}
+                   {savedSuccess ? "Secured" : "Save to Collection"}
+                </Button>
+                <Button 
+                  asChild
+                  className="rounded-none bg-primary/5 hover:bg-primary/10 text-primary border border-primary/20 h-14 uppercase tracking-[0.3em] text-[10px] font-bold transition-all px-8"
+                >
+                  <a href="/dashboard/notes">
+                    <History className="h-4 w-4 mr-3" />
+                    Archive
+                  </a>
+                </Button>
+                <Button 
+                  variant="ghost" 
+                  onClick={() => setLastResult(null)}
+                  className="h-14 text-[10px] font-bold uppercase tracking-[0.3em] hover:bg-primary/5 rounded-none px-8"
+                >
+                   Dismiss
+                </Button>
+              </div>
+            </div>
           </motion.div>
         )}
       </CardContent>

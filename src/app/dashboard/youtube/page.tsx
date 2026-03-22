@@ -10,12 +10,14 @@ export default async function YouTubeSummarizerPage() {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
 
-  if (!user) return null
-
-  const { data: summaries } = await supabase
-    .from("yt_summaries")
-    .select("*")
-    .order("created_at", { ascending: false })
+  let summaries: any[] | null = null;
+  if (user) {
+    const { data } = await supabase
+      .from("yt_summaries")
+      .select("*")
+      .order("created_at", { ascending: false });
+    summaries = data;
+  }
 
   return (
     <div className="space-y-12 font-serif selection:bg-primary/20">
@@ -67,10 +69,9 @@ export default async function YouTubeSummarizerPage() {
                             <span className="opacity-20">|</span>
                             <span className="text-primary/60">
                               Source: {
-                                summary.mode_used === "transcript" ? "Transcript" :
-                                summary.mode_used === "audio" ? "AI Audio Transcription" :
-                                summary.mode_used === "metadata" ? "Metadata (Limited Accuracy)" :
-                                "Manual"
+                                summary.mode_used === "Transcript (Auto)" ? "Transcript" :
+                                summary.mode_used === "Safety Fallback" ? "Safety" :
+                                summary.mode_used
                               }
                             </span>
                           </>

@@ -51,13 +51,16 @@ export async function updateSession(request: NextRequest) {
   } = await supabase.auth.getUser();
 
   // Array of public routes that don't require authentication
-  const publicRoutes = ["/", "/auth/callback"];
+  const publicRoutes = ["/", "/auth/callback", "/dashboard/youtube"];
 
-  // If there's no user and the route is not public, redirect to home page
+  // If there's no user and the route is not public, handle unauthenticated access
   if (
     !user &&
     !publicRoutes.includes(request.nextUrl.pathname)
   ) {
+    if (request.nextUrl.pathname.startsWith('/api/')) {
+        return NextResponse.json({ error: 'Auth required' }, { status: 401 })
+    }
     const url = request.nextUrl.clone();
     url.pathname = "/";
     return NextResponse.redirect(url);
