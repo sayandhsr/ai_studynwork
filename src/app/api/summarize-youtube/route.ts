@@ -64,6 +64,7 @@ Key Points:
 
 Analyze the tone, core message, and specific details. Do NOT use placeholder text.`;
 
+  let geminiResults = ""
   if (geminiKey) {
     const geminiModels = ["gemini-2.0-flash", "gemini-1.5-flash"]
     for (const gModel of geminiModels) {
@@ -89,13 +90,18 @@ Analyze the tone, core message, and specific details. Do NOT use placeholder tex
         } else {
           const errText = await res.text()
           console.error(`[SYNTH] Gemini ${gModel} Error (Status ${res.status}):`, errText)
+          geminiResults += `${gModel}: Error ${res.status}. `
         }
       } catch (e: any) {
         console.error(`[SYNTH] Gemini ${gModel} Exception:`, e.message)
+        geminiResults += `${gModel}: ${e.message}. `
       }
     }
+  } else {
+    geminiResults = "Key is MISSING in Vercel settings. "
   }
 
+  let orResults = ""
   if (orKey) {
     const models = ["google/gemini-2.0-flash-lite-preview-02-05:free", "mistralai/mistral-7b-instruct:free"];
     for (const model of models) {
@@ -115,15 +121,20 @@ Analyze the tone, core message, and specific details. Do NOT use placeholder tex
           const text = (data.choices?.[0]?.message?.content || "").replace(/[*#`]/g, "").trim();
           if (text && text.length > 50) return text;
         } else {
-           console.error(`OpenRouter Error (${model}):`, await res.text());
+           const errText = await res.text()
+           console.error(`OpenRouter Error (${model}):`, errText);
+           orResults += `${model}: Error ${res.status}. `
         }
-      } catch (e) {
-         console.error(`OpenRouter Exception (${model}):`, e);
+      } catch (e: any) {
+         console.error(`OpenRouter Exception (${model}):`, e.message);
+         orResults += `${model}: ${e.message}. `
       }
     }
+  } else {
+    orResults = "Key is MISSING in Vercel settings. "
   }
 
-  throw new Error("All AI synthesis models failed. Please check your API keys or limits.");
+  throw new Error(`Synthesis Failed Details: (Gemini: ${geminiResults}) (OpenRouter: ${orResults})`);
 }
 
 // --- MAIN ROUTE ---
