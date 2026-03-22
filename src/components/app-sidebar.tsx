@@ -20,7 +20,8 @@ import {
   Settings,
   Youtube,
   FileEdit,
-  Bot
+  Bot,
+  Activity
 } from "lucide-react"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
@@ -101,9 +102,14 @@ export function AppSidebar() {
           </SidebarGroupContent>
         </SidebarGroup>
       </SidebarContent>
-      <SidebarFooter className="border-t border-border/20 p-6 bg-card">
-        <div className="flex items-center gap-4 italic font-light text-[10px] opacity-30 tracking-widest uppercase">
-           <span>v4.1 Sanctuary Edition</span>
+      <SidebarFooter className="border-t border-border/20 p-6 bg-card space-y-4">
+        <div className="flex flex-col gap-1">
+          <div className="flex items-center gap-4 italic font-light text-[10px] opacity-30 tracking-widest uppercase">
+             <span>v5.0 Master Edition</span>
+          </div>
+          <div className="text-[8px] font-mono text-primary/40 uppercase tracking-tighter">
+            Build: Final_Hardened_v3
+          </div>
         </div>
       </SidebarFooter>
       <style jsx global>{`

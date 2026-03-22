@@ -6,7 +6,7 @@ import { createClient } from "@/lib/supabase/client"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Card, CardContent } from "@/components/ui/card"
-import { Youtube, Wand2, Loader2, Sparkles, CheckCircle2, History, ChevronRight } from "lucide-react"
+import { Youtube, Wand2, Loader2, Sparkles, CheckCircle2, History, ChevronRight, AlertCircle } from "lucide-react"
 import { motion } from "framer-motion"
 
 import { Textarea } from "@/components/ui/textarea"
@@ -21,13 +21,14 @@ export function SummaryGenerator() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState("")
   const [progressStep, setProgressStep] = useState(0)
-  const [lastResult, setLastResult] = useState<{ summary: string; mode_used: string } | null>(null)
+  const [lastResult, setLastResult] = useState<{ summary: string; mode_used: string; v?: string; debug?: string } | null>(null)
   const [savingNote, setSavingNote] = useState(false)
   const [savedSuccess, setSavedSuccess] = useState(false)
 
   const steps = [
-    "Fetching transcript...",
-    "Generating summary..."
+    "Contacting YouTube (V5.0/Hardened)...",
+    "Extracting Oral Wisdom...",
+    "Synthesizing with Groq/Gemini..."
   ]
 
   const handleGenerate = async (e: React.FormEvent) => {
@@ -36,13 +37,13 @@ export function SummaryGenerator() {
     
     if (mode === "auto") {
       if (!url.trim() || !url.toLowerCase().includes("yout")) {
-        setError("Please enter a valid YouTube link")
-        return
+          setError("Please enter a valid YouTube link")
+          return
       }
     } else {
       if (!manualTranscript.trim() || manualTranscript.length < 10) {
-        setError("Please paste a transcript or key text")
-        return
+          setError("Please paste a transcript or key text")
+          return
       }
     }
 
@@ -51,14 +52,12 @@ export function SummaryGenerator() {
     setLoading(true)
     setProgressStep(0)
 
-    // Parallel progress simulation for better UX (Slower steps for V3)
     const progressInterval = setInterval(() => {
       setProgressStep((prev) => (prev < steps.length - 1 ? prev + 1 : prev))
-    }, 4000)
+    }, 4500)
 
     try {
       const payload = mode === "auto" ? { url } : { manualTranscript }
-      
       const response = await fetch("/api/summarize-youtube", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -66,12 +65,9 @@ export function SummaryGenerator() {
       })
 
       const data = await response.json()
+      if (!response.ok) throw new Error(data.summary || "System connection interrupted.");
 
-      if (!response.ok) {
-        throw new Error(data.error || "Failed to generate summary")
-      }
-
-      setLastResult({ summary: data.summary, mode_used: data.mode_used })
+      setLastResult(data)
       setUrl("")
       setManualTranscript("")
       router.refresh()
@@ -90,18 +86,14 @@ export function SummaryGenerator() {
     try {
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) throw new Error("Auth required to save notes")
-
       const titleMatch = lastResult.summary.match(/Title:\s*(.*)/i);
-      const noteTitle = titleMatch ? titleMatch[1].trim() : `YouTube Report`;
-      
+      const noteTitle = titleMatch ? titleMatch[1].trim() : `YouTube Synthesis Report`;
       const { error: dbError } = await supabase.from("notes").insert([{ 
         user_id: user.id, 
         title: noteTitle, 
         content: lastResult.summary 
       }])
-
       if (dbError) throw dbError;
-      
       setSavedSuccess(true)
       setTimeout(() => setSavedSuccess(false), 3000)
     } catch (err: any) {
@@ -111,14 +103,16 @@ export function SummaryGenerator() {
     }
   }
 
-  // Parse sections safely
-  const title = lastResult?.summary.split("\n").find(l => l.toLowerCase().startsWith("title:"))?.split(":")[1]?.trim() || "Insights Found";
+  const summaryLines = lastResult?.summary.split("\n") || [];
+  const title = summaryLines.find(l => l.toLowerCase().startsWith("title:"))?.split(":")[1]?.trim() || "Synthesis Result";
   const hasSummary = lastResult?.summary.includes("Summary:");
   const summaryText = hasSummary ? lastResult?.summary.split("Summary:")[1]?.split("Key Points:")[0]?.trim() : null;
   const keyPoints = (lastResult?.summary.includes("Key Points:") 
     ? lastResult?.summary.split("Key Points:")[1]?.split("\n") 
-    : lastResult?.summary.split("\n").filter(l => l.trim().startsWith("•")))
+    : summaryLines.filter(l => l.trim().startsWith("•")))
     ?.filter(l => l.trim().startsWith("•")) || [];
+
+  const isErrorMessage = lastResult?.summary.includes("ERROR:") || lastResult?.summary.includes("Blocked");
 
   return (
     <Card className="rounded-none border-border/40 border bg-card/50 shadow-2xl relative overflow-hidden">
@@ -145,7 +139,7 @@ export function SummaryGenerator() {
                 <Input
                   value={url}
                   onChange={(e) => setUrl(e.target.value)}
-                  placeholder="URL of the Lecture (e.g. youtube.com/watch?v=...)"
+                  placeholder="Paste YouTube Link (e.g. youtube.com/watch?v=...)"
                   className="pl-12 h-14 rounded-none border-border/30 focus-visible:ring-primary/20 bg-background/50 italic font-light tracking-wide text-lg"
                   disabled={loading}
                 />
@@ -159,17 +153,15 @@ export function SummaryGenerator() {
                   className="min-h-[200px] rounded-none border-border/30 focus-visible:ring-primary/20 bg-background/50 italic font-light tracking-wide text-lg p-6 resize-none"
                   disabled={loading}
                 />
-                <p className="text-[10px] font-bold tracking-[0.2em] uppercase opacity-40 italic">
-                  Tip: Direct transcripts offer the deepest insights.
-                </p>
               </div>
             )}
             
-            <Button type="submit" disabled={loading || (mode === "auto" ? !url : !manualTranscript)} className="h-16 gap-4 rounded-none bg-primary hover:bg-primary/90 transition-all font-bold uppercase tracking-[0.3em] text-xs relative overflow-hidden group">
-              {loading ? <Loader2 className="h-5 w-5 animate-spin" /> : <Wand2 className="h-5 w-5" />}
+            <Button type="submit" disabled={loading || (mode === "auto" ? !url : !manualTranscript)} className="h-20 gap-4 rounded-none bg-primary hover:bg-primary/90 transition-all font-bold uppercase tracking-[0.4em] text-xs relative overflow-hidden group">
+              {loading ? <Loader2 className="h-6 w-6 animate-spin text-background" /> : <Wand2 className="h-6 w-6" />}
               {loading ? (
-                <div className="flex flex-col items-start leading-none gap-1">
-                  <span className="text-[10px]">{steps[progressStep]}</span>
+                <div className="flex flex-col items-start leading-none gap-2">
+                  <span className="text-[12px] text-background">{steps[progressStep]}</span>
+                  <span className="text-[8px] opacity-70 text-background">Status: v5.0 Diagnostics Active</span>
                 </div>
               ) : "Distill Insights"}
               <div className="absolute inset-0 bg-white/5 opacity-0 group-hover:opacity-100 transition-opacity skew-x-12 translate-x-full group-hover:translate-x-0 duration-700" />
@@ -180,23 +172,30 @@ export function SummaryGenerator() {
             <motion.div 
               initial={{ opacity: 0, height: 0 }}
               animate={{ opacity: 1, height: "auto" }}
-              className="p-6 bg-red-500/10 border border-red-500/20 text-red-500 text-sm font-light italic text-center rounded-none"
+              className="p-8 bg-red-500/10 border border-red-500/20 text-red-500 text-sm font-light italic flex flex-col gap-4 rounded-none"
             >
-              ⚠️ {error}
+              <div className="flex items-center gap-3">
+                <AlertCircle className="w-5 h-5" />
+                <span className="font-bold uppercase tracking-wider">System Exception (v5.0)</span>
+              </div>
+              <p className="pl-8 leading-relaxed">{error}</p>
+              <div className="pl-8 pt-4 border-t border-red-500/10 mt-2 text-[10px] opacity-60">
+                PRO-TIP: If "Transcript Blocked," use the Manual Scribe tab to paste the text directly.
+              </div>
             </motion.div>
           )}
         </div>
         
         {lastResult && (
           <motion.div 
-            initial={{ opacity: 0, y: 20 }}
+            initial={{ opacity: 0, y: 30 }}
             animate={{ opacity: 1, y: 0 }}
-            className="mt-12 space-y-8"
+            className="mt-16 space-y-12"
           >
-            <div className="p-10 rounded-none border border-primary/20 bg-primary/5 relative overflow-hidden space-y-10">
+            <div className={`p-12 rounded-none border ${isErrorMessage ? 'border-red-500/30 bg-red-500/5' : 'border-primary/20 bg-primary/5'} relative overflow-hidden space-y-10`}>
               <div className="space-y-12">
-                <div className="space-y-6">
-                  <h3 className="text-4xl font-heading italic tracking-tight text-foreground/90 leading-tight">
+                <div className="space-y-8">
+                  <h3 className={`text-4xl font-heading italic tracking-tight leading-tight ${isErrorMessage ? 'text-red-500' : 'text-foreground/90'}`}>
                     {title}
                   </h3>
                   
@@ -206,17 +205,17 @@ export function SummaryGenerator() {
                         {summaryText}
                       </p>
                       
-                      <ul className="grid gap-6">
+                      <ul className="grid gap-8">
                         {keyPoints.map((point, i) => (
                           <motion.li 
                             key={i}
                             initial={{ opacity: 0, x: -10 }}
                             animate={{ opacity: 1, x: 0 }}
                             transition={{ delay: i * 0.1 }}
-                            className="flex gap-4 text-sm font-light italic leading-relaxed text-foreground/80 group"
+                            className="flex gap-6 text-sm font-light italic leading-relaxed text-foreground/80 group"
                           >
-                            <span className="text-primary mt-1.5 opacity-50 group-hover:opacity-100 transition-opacity">•</span>
-                            {point.replace("•", "").trim()}
+                            <span className="text-primary mt-1.5 opacity-40 group-hover:opacity-100 transition-opacity">•</span>
+                            <span>{point.replace("•", "").trim()}</span>
                           </motion.li>
                         ))}
                       </ul>
@@ -229,31 +228,36 @@ export function SummaryGenerator() {
                 </div>
               </div>
 
-              <div className="pt-10 flex flex-col sm:flex-row gap-4 border-t border-primary/10">
-                <Button 
-                   onClick={handleSaveToNotes}
-                   disabled={savingNote || savedSuccess}
-                   className="rounded-none bg-primary hover:bg-primary/90 text-primary-foreground h-14 uppercase tracking-[0.3em] text-[10px] font-bold transition-all px-8 border border-primary/20"
-                >
-                   {savingNote ? <Loader2 className="h-4 w-4 animate-spin mr-3" /> : (savedSuccess ? <CheckCircle2 className="h-4 w-4 mr-3" /> : <Sparkles className="h-4 w-4 mr-3" />)}
-                   {savedSuccess ? "Secured" : "Save to Collection"}
-                </Button>
-                <Button 
-                  asChild
-                  className="rounded-none bg-primary/5 hover:bg-primary/10 text-primary border border-primary/20 h-14 uppercase tracking-[0.3em] text-[10px] font-bold transition-all px-8"
-                >
-                  <a href="/dashboard/notes">
-                    <History className="h-4 w-4 mr-3" />
-                    Archive
-                  </a>
-                </Button>
-                <Button 
-                  variant="ghost" 
-                  onClick={() => setLastResult(null)}
-                  className="h-14 text-[10px] font-bold uppercase tracking-[0.3em] hover:bg-primary/5 rounded-none px-8"
-                >
-                   Dismiss
-                </Button>
+              <div className="pt-10 flex flex-col sm:flex-row gap-4 border-t border-primary/10 items-center justify-between">
+                <div className="flex gap-4">
+                  <Button 
+                    onClick={handleSaveToNotes}
+                    disabled={savingNote || savedSuccess || isErrorMessage}
+                    className="rounded-none bg-primary hover:bg-primary/90 text-primary-foreground h-14 uppercase tracking-[0.3em] text-[10px] font-bold transition-all px-8 border border-primary/20"
+                  >
+                    {savingNote ? <Loader2 className="h-4 w-4 animate-spin mr-3" /> : (savedSuccess ? <CheckCircle2 className="h-4 w-4 mr-3" /> : <Sparkles className="h-4 w-4 mr-3" />)}
+                    {savedSuccess ? "Secured" : "Save to Collection"}
+                  </Button>
+                  <Button 
+                    variant="ghost" 
+                    onClick={() => setLastResult(null)}
+                    className="h-14 text-[10px] font-bold uppercase tracking-[0.3em] hover:bg-primary/5 rounded-none px-8"
+                  >
+                    Dismiss
+                  </Button>
+                </div>
+                
+                <div className="flex items-center gap-6 px-4">
+                   <div className="flex flex-col items-end">
+                      <span className="text-[8px] uppercase tracking-tighter opacity-30">Active Branch</span>
+                      <span className="text-[10px] font-mono text-primary/60">{lastResult.v || "Legacy"}</span>
+                   </div>
+                   <div className="h-8 w-[1px] bg-primary/10" />
+                   <div className="flex flex-col items-end">
+                      <span className="text-[8px] uppercase tracking-tighter opacity-30">Trace Diagnostic</span>
+                      <span className="text-[10px] font-mono text-primary/60">{lastResult.debug || "No Trace"}</span>
+                   </div>
+                </div>
               </div>
             </div>
           </motion.div>
