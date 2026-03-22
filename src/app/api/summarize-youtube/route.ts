@@ -383,13 +383,14 @@ export async function POST(req: NextRequest) {
       } catch (e) { console.log("DB cache skipped."); }
     }
 
-    return NextResponse.json({ summary, mode_used: modeUsed });
+    return NextResponse.json({ summary, v: "25.1", mode_used: modeUsed });
 
   } catch (error: any) {
-    console.error("[V22] Critical API Error:", error);
+    console.error("[V25] Critical API Error:", error);
     const errorMessage = error?.message || "The backend encountered a severe execution error.";
     return NextResponse.json({ 
-      summary: `Title: Synthesis Failed\nSummary: ${errorMessage}\nKey Points:\n• Please ensure your API keys have sufficient credits.\n• If the video is very new, transcripts may not be available yet.` 
+      summary: `Title: Synthesis Failed (v25.1)\nSummary: ${errorMessage}\nKey Points:\n• Please ensure your API keys have sufficient credits.\n• If the video is very new, transcripts may not be available yet.`,
+      v: "25.1"
     });
   }
 }
