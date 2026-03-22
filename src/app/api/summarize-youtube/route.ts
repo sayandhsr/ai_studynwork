@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from "next/server"
 import { createClient } from "@/lib/supabase/server"
 import { YoutubeTranscript } from 'youtube-transcript'
+import { getSubtitles } from 'youtube-caption-extractor'
+// @ts-ignore
+import { YoutubeTranscript as YTPlay } from '@playzone/youtube-transcript'
 
 // --- HELPERS ---
 
@@ -232,21 +235,50 @@ export async function POST(req: NextRequest) {
     let finalContent = manualTranscript || "";
     let modeUsed = manualTranscript ? "Manual" : "Native";
 
-    // 1. TRY NATIVE TRANSCRIPT (Free but often blocked on Vercel)
+    // 1. TRY NATIVE TRANSCRIPT (youtube-transcript)
     if (!finalContent && vId && vId !== "manual" && vId !== "unknown") {
       try {
+        console.log(`[TRANSCRIPT] Trying youtube-transcript for ${vId}`);
         const transcript = await YoutubeTranscript.fetchTranscript(vId);
         if (transcript && transcript.length > 0) {
           finalContent = transcript.map(t => t.text).join(" ");
-          modeUsed = "Native Transcript";
+          modeUsed = "Native Transcript (V1)";
         }
       } catch (e) {
-        console.error(`[TRANSCRIPT] Native fetch failed for ${vId}`);
+        console.error(`[TRANSCRIPT] Native V1 failed for ${vId}`);
       }
     }
 
-    // 2. TRY RAPIDAPI TRANSCRIPT (Much more reliable)
-    if (!finalContent && vId && vId !== "manual" && vId !== "unknown" && orKey) {
+    // 2. TRY @PLAYZONE/YOUTUBE-TRANSCRIPT
+    if (!finalContent && vId && vId !== "manual" && vId !== "unknown") {
+      try {
+        console.log(`[TRANSCRIPT] Trying @playzone/youtube-transcript for ${vId}`);
+        const transcript = await YTPlay.fetchTranscript(vId);
+        if (transcript && transcript.length > 0) {
+          finalContent = transcript.map((t: any) => t.text).join(" ");
+          modeUsed = "Native Transcript (V2)";
+        }
+      } catch (e) {
+        console.error(`[TRANSCRIPT] Native V2 failed for ${vId}`);
+      }
+    }
+
+    // 3. TRY YOUTUBE-CAPTION-EXTRACTOR
+    if (!finalContent && vId && vId !== "manual" && vId !== "unknown") {
+      try {
+        console.log(`[TRANSCRIPT] Trying youtube-caption-extractor for ${vId}`);
+        const transcript = await getSubtitles({ videoID: vId, lang: 'en' });
+        if (transcript && transcript.length > 0) {
+          finalContent = transcript.map((t: any) => t.text).join(" ");
+          modeUsed = "Native Transcript (V3)";
+        }
+      } catch (e) {
+        console.error(`[TRANSCRIPT] Native V3 failed for ${vId}`);
+      }
+    }
+
+    // 4. TRY RAPIDAPI TRANSCRIPT (Most reliable)
+    if (!finalContent && vId && vId !== "manual" && vId !== "unknown" && process.env.RAPIDAPI_KEY) {
       const rapidTranscript = await fetchTranscriptFromRapidAPI(vId, process.env.RAPIDAPI_KEY || "");
       if (rapidTranscript) {
         finalContent = rapidTranscript;
@@ -254,7 +286,7 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    // 3. EMERGENCY METADATA SCRAPE (Title + Description)
+    // 5. EMERGENCY METADATA SCRAPE (Title + Description)
     let videoTitle = "";
     if (vId && vId !== "manual" && vId !== "unknown") {
        const metadata = await fetchYoutubeMetadata(vId);
@@ -267,16 +299,19 @@ export async function POST(req: NextRequest) {
        }
     }
 
-    // 4. ABSOLUTE LAST RESORT (Don't hallucinate if no data)
-    if (!finalContent || finalContent.length < 10) {
-      finalContent = "Error: No transcript or metadata could be retrieved for this video.";
-      modeUsed = "Error State";
+    // 6. STOP IF NO DATA (Prevent hallucinations)
+    if (!finalContent || finalContent.length < 20) {
+      console.warn(`[TRANSCRIPT] STOPPING: No valid content found for ${vId}`);
+      return NextResponse.json({ 
+        summary: `Title: Transcript Blocked\nSummary: YouTube is currently blocking our automated access to this video's transcript. \nKey Points:\n• Try again with a different video.\n• Or, paste the transcript manually in the "Manual Scribe" tab.`,
+        mode_used: "Failure"
+      });
     }
 
-    // 5. SYNTHESIZE
+    // 7. SYNTHESIZE
     const summary = await synthesize(finalContent, orKey, geminiKey, groqKey, videoTitle);
 
-    // 6. DB CACHE
+    // 8. DB CACHE
     if (user && summary.length > 50 && vId && vId !== "manual" && !summary.includes("I'm sorry")) {
       try {
         await supabase.from("yt_summaries").upsert([{ 
