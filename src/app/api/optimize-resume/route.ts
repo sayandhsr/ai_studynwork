@@ -1,41 +1,55 @@
-import { NextResponse } from "next/server"
+import { NextRequest, NextResponse } from "next/server"
 
-export async function POST(req: Request) {
+export async function POST(req: NextRequest) {
   try {
-    const { data, targetRole } = await req.json()
-    const orKey = process.env.OPENROUTER_API_KEY
+    const { prompt } = await req.json()
+    const orKey = process.env.OPENROUTER_API_KEY || ""
+    const geminiKey = process.env.GEMINI_API_KEY || ""
+    const groqKey = process.env.GROQ_API_KEY || ""
 
-    const prompt = `You are an expert ATS (Applicant Tracking System) optimizer. 
-Your goal is to rewrite the provided resume data to be highly discoverable by ATS while remaining professional and human-readable.
-
-Original Data:
-${JSON.stringify(data, null, 2)}
-
-Target Role: ${targetRole || "Software Engineer / Professional"} (optimize for this)
-
-Instructions:
-1. Enhance the 'summary' to be impactful and keyword-rich.
-2. Rewrite 'experience' bullet points to use the STAR method (Situation, Task, Action, Result) where possible.
-3. Incorporate industry-standard keywords related to ${targetRole}.
-4. Ensure the formatting of the output remains EXACTLY the same JSON structure as the input.
-
-Return ONLY the optimized JSON, no conversational text.`
-
-    const geminiKey = process.env.GEMINI_API_KEY
     let optimizedData = null
-    let aiError = ""
     let geminiResults = ""
+    let groqResults = ""
 
-    // 1. Try Native Gemini API first (Free & Fast)
-    if (geminiKey) {
+    // 1. Try Groq (Fastest)
+    if (groqKey) {
+      try {
+        console.log(`[OPT] Trying Groq: llama-3.3-70b-versatile`)
+        const res = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+          method: "POST",
+          headers: { "Authorization": `Bearer ${groqKey}`, "Content-Type": "application/json" },
+          body: JSON.stringify({
+            model: "llama-3.3-70b-versatile",
+            messages: [{ role: "user", content: prompt + "\n\nReturn ONLY the raw JSON object. No markdown, no explanation." }],
+            response_format: { type: "json_object" }
+          }),
+          signal: AbortSignal.timeout(20000)
+        })
+
+        if (res.ok) {
+          const aiData = await res.json()
+          const text = aiData.choices?.[0]?.message?.content || ""
+          optimizedData = JSON.parse(text)
+          console.log(`[OPT] Groq Success!`)
+        } else {
+          console.error(`[OPT] Groq Error:`, await res.text())
+          groqResults = `Groq: Error ${res.status}. `
+        }
+      } catch (e: any) {
+        console.error(`[OPT] Groq Exception:`, e.message)
+        groqResults = `Groq: ${e.message}. `
+      }
+    }
+
+    // 2. Try Native Gemini API (Failover)
+    if (!optimizedData && geminiKey) {
       const geminiAttempts = [
         { model: "gemini-2.0-flash", version: "v1beta" },
-        { model: "gemini-1.5-flash", version: "v1" },
-        { model: "gemini-1.5-flash", version: "v1beta" }
+        { model: "gemini-1.5-flash", version: "v1" }
       ]
       for (const attempt of geminiAttempts) {
         try {
-          console.log(`[OPT] Trying Gemini: ${attempt.model} (${attempt.version})`)
+          console.log(`[OPT] Trying Gemini: ${attempt.model}`)
           const url = `https://generativelanguage.googleapis.com/${attempt.version}/models/${attempt.model}:generateContent?key=${geminiKey}`
           const res = await fetch(url, {
             method: "POST",
@@ -52,10 +66,9 @@ Return ONLY the optimized JSON, no conversational text.`
             const jsonStr = text.replace(/```json/g, "").replace(/```/g, "").trim()
             optimizedData = JSON.parse(jsonStr)
             console.log(`[OPT] Gemini Success with ${attempt.model}`)
-            break // Success!
+            break
           } else {
-            aiError = await res.text()
-            console.error(`[OPT] Gemini ${attempt.model} Error (Status ${res.status}):`, aiError)
+            console.error(`[OPT] Gemini ${attempt.model} Error:`, await res.text())
             geminiResults += `${attempt.model}: Error ${res.status}. `
           }
         } catch (e: any) {
@@ -63,30 +76,31 @@ Return ONLY the optimized JSON, no conversational text.`
           geminiResults += `${attempt.model}: ${e.message}. `
         }
       }
-    } else {
-      geminiResults = "Key is MISSING in Vercel settings. "
     }
 
-    // 2. Fallback to OpenRouter if Gemini fails or key is missing
+    // 3. Fallback to OpenRouter (Final)
     let orResults = ""
     if (!optimizedData && orKey) {
       const orModels = [
         "google/gemini-2.0-flash-lite-preview-02-05:free",
-        "google/gemini-flash-1.5-exp:free",
-        "mistralai/mistral-7b-instruct:free",
-        "openchat/openchat-7b:free"
+        "mistralai/mistral-7b-instruct:free"
       ];
       for (const model of orModels) {
         try {
           console.log(`[OPT] Trying OpenRouter: ${model}`)
           const res = await fetch("https://openrouter.ai/api/v1/chat/completions", {
             method: "POST",
-            headers: { "Authorization": `Bearer ${orKey}`, "Content-Type": "application/json" },
+            headers: { 
+              "Authorization": `Bearer ${orKey}`, 
+              "Content-Type": "application/json",
+              "HTTP-Referer": "https://ai-studynwork.vercel.app",
+              "X-Title": "Study Nest Sanctuary"
+            },
             body: JSON.stringify({
               model,
               messages: [{ role: "user", content: prompt }]
             }),
-            signal: AbortSignal.timeout(30000)
+            signal: AbortSignal.timeout(25000)
           });
 
           if (res.ok) {
@@ -97,8 +111,7 @@ Return ONLY the optimized JSON, no conversational text.`
             console.log(`[OPT] OpenRouter Success with ${model}`)
             break
           } else {
-            const errText = await res.text()
-            console.error(`[OPT] OR Error (${model}):`, errText);
+            console.error(`[OPT] OR Error (${model}):`, await res.text());
             orResults += `${model}: Error ${res.status}. `
           }
         } catch (e: any) {
@@ -106,18 +119,16 @@ Return ONLY the optimized JSON, no conversational text.`
           orResults += `${model}: ${e.message}. `
         }
       }
-    } else if (!optimizedData) {
-      orResults = "Key is MISSING in Vercel settings. "
     }
 
     if (!optimizedData) {
-      throw new Error(`Optimization Failed Details: (Gemini: ${geminiResults}) (OpenRouter: ${orResults})`)
+      throw new Error(`Optimization Failed Details: (Groq: ${groqResults}) (Gemini: ${geminiResults}) (OR: ${orResults})`)
     }
 
     return NextResponse.json({ optimizedData })
 
-  } catch (error) {
-    console.error("Layout Optimization Error:", error)
-    return NextResponse.json({ error: "Failed to optimize resume." }, { status: 500 })
+  } catch (error: any) {
+    console.error("Resume Optimization Error:", error)
+    return NextResponse.json({ error: error.message }, { status: 500 })
   }
 }
