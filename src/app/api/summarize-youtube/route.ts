@@ -122,50 +122,53 @@ async function fetchYoutubeMetadata(vId: string) {
   return null;
 }
 
-async function synthesize(content: string, orKey: string, geminiKey?: string, groqKey?: string, videoTitle?: string) {
-  const prompt = `You are an expert content synthesist. ${videoTitle ? `The video title is "${videoTitle}". ` : ""}Summarize the following video transcript/content into 5-8 highly engaging, structured bullet points. 
+async function synthesize(content: string, orKey: string, geminiKey?: string, groqKey?: string, videoTitle?: string, modeUsed?: string) {
+  const prompt = `You are an expert content synthesist. ${videoTitle ? `The video title is "${videoTitle}". ` : ""}
+Summarize the following video transcript/content into 5-8 highly engaging, structured bullet points. 
 Focus on the most actionable insights and "aha!" moments.
-Format:
+
+CRITICAL INSTRUCTIONS:
+1. DO NOT make up information.
+2. If the content provided is too short, nonsensical, or doesn't look like a transcript/description of the video title "${videoTitle || 'the video'}", say exactly: "ERROR: COULD NOT RETRIEVE VALID DATA. PLEASE PROVIDE TRANSCRIPT MANUALLY."
+3. If you are successful, use the following format:
 Title: [A Punchy, Curiosity-Gap Title]
 Summary: [1-2 sentences of high-level context]
 Key Points:
 • [Point 1]
 • [Point 2]...
-Analyze the tone, core message, and specific details. Do NOT make up information. If the content provided is too short or doesn't look like a transcript, say "I'm sorry, I couldn't retrieve the full transcript for this video."`;
 
-  // 1. Try Groq (Fastest & most reliable for free tier)
+Analyze the tone, core message, and specific details.`;
+
+  const contentSnippet = content.substring(0, 15000);
+  
+  // 1. Try Groq (Fastest & most reliable)
   let groqResults = ""
   if (groqKey) {
     try {
-      console.log(`[SYNTH] Trying Groq: llama-3.3-70b-versatile`)
+      console.log(`[SYNTH] Trying Groq: llama-3.3-70b-versatile`);
       const res = await fetch("https://api.groq.com/openai/v1/chat/completions", {
         method: "POST",
         headers: { "Authorization": `Bearer ${groqKey}`, "Content-Type": "application/json" },
         body: JSON.stringify({
           model: "llama-3.3-70b-versatile",
-          messages: [{ role: "user", content: `Instructions: ${prompt}\n\nContent:\n${content.substring(0, 15000)}` }]
+          messages: [{ role: "user", content: `Instructions: ${prompt}\n\nContent:\n${contentSnippet}` }]
         }),
         signal: AbortSignal.timeout(20000)
-      })
+      });
 
       if (res.ok) {
-        const data = await res.json()
-        const text = data.choices?.[0]?.message?.content
+        const data = await res.json();
+        const text = data.choices?.[0]?.message?.content;
         if (text && text.length > 50) {
-          console.log(`[SYNTH] Groq Success!`)
-          return text.replace(/[*#`]/g, "").trim()
+          console.log(`[SYNTH] Groq Success!`);
+          return { text: text.replace(/[*#`]/g, "").trim(), debug: `Engine: Groq | Mode: ${modeUsed}` };
         }
       } else {
-        const errText = await res.text()
-        console.error(`[SYNTH] Groq Error (Status ${res.status}):`, errText)
-        groqResults = `Groq: Error ${res.status}. `
+        groqResults = `Groq Error ${res.status}. `;
       }
     } catch (e: any) {
-      console.error(`[SYNTH] Groq Exception:`, e.message)
-      groqResults = `Groq: ${e.message}. `
+      groqResults = `Groq: ${e.message}. `;
     }
-  } else {
-    groqResults = "Groq Key Missing. "
   }
 
   // 2. Try Gemini Native
@@ -177,13 +180,13 @@ Analyze the tone, core message, and specific details. Do NOT make up information
     ]
     for (const attempt of geminiAttempts) {
       try {
-        console.log(`[SYNTH] Trying Gemini: ${attempt.model} (${attempt.version})`)
+        console.log(`[SYNTH] Trying Gemini: ${attempt.model}`);
         const url = `https://generativelanguage.googleapis.com/${attempt.version}/models/${attempt.model}:generateContent?key=${geminiKey}`
         const res = await fetch(url, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            contents: [{ role: "user", parts: [{ text: `Instructions: ${prompt}\n\nContent:\n${content.substring(0, 15000)}` }] }]
+            contents: [{ role: "user", parts: [{ text: `Instructions: ${prompt}\n\nContent:\n${contentSnippet}` }] }]
           }),
           signal: AbortSignal.timeout(20000)
         })
@@ -192,21 +195,14 @@ Analyze the tone, core message, and specific details. Do NOT make up information
           const data = await res.json()
           const text = data.candidates?.[0]?.content?.parts?.[0]?.text
           if (text && text.length > 50) {
-            console.log(`[SYNTH] Gemini Success with ${attempt.model}`)
-            return text.replace(/[*#`]/g, "").trim()
+            console.log(`[SYNTH] Gemini Success with ${attempt.model}`);
+            return { text: text.replace(/[*#`]/g, "").trim(), debug: `Engine: Gemini (${attempt.model}) | Mode: ${modeUsed}` };
           }
-        } else {
-          const errText = await res.text()
-          console.error(`[SYNTH] Gemini ${attempt.model} Error (Status ${res.status}):`, errText)
-          geminiResults += `${attempt.model}: Error ${res.status}. `
         }
       } catch (e: any) {
-        console.error(`[SYNTH] Gemini ${attempt.model} Exception:`, e.message)
         geminiResults += `${attempt.model}: ${e.message}. `
       }
     }
-  } else {
-    geminiResults = "Gemini Key Missing. "
   }
 
   // 3. Try OpenRouter (Final Fallback)
@@ -214,8 +210,7 @@ Analyze the tone, core message, and specific details. Do NOT make up information
   if (orKey) {
     const orModels = [
       "google/gemini-2.0-flash-lite-preview-02-05:free",
-      "mistralai/mistral-7b-instruct:free",
-      "openchat/openchat-7b:free"
+      "mistralai/mistral-7b-instruct:free"
     ];
     for (const model of orModels) {
       try {
@@ -239,22 +234,16 @@ Analyze the tone, core message, and specific details. Do NOT make up information
           const data = await res.json();
           const text = (data.choices?.[0]?.message?.content || "").replace(/[*#`]/g, "").trim();
           if (text && text.length > 50) {
-             console.log(`[SYNTH] OpenRouter Success with ${model}`)
-             return text;
+             console.log(`[SYNTH] OpenRouter Success with ${model}`);
+             return { text, debug: `Engine: OpenRouter (${model}) | Mode: ${modeUsed}` };
           }
-        } else {
-           const errText = await res.text()
-           console.error(`[SYNTH] OR Error (${model}):`, errText);
-           orResults += `${model}: Error ${res.status}. `
         }
       } catch (e: any) {
-         console.error(`[SYNTH] OR Exception (${model}):`, e.message);
          orResults += `${model}: ${e.message}. `
       }
     }
-  } else {
-    orResults = "OR Key Missing. "
   }
+  
   throw new Error(`Synthesis Failed Details: (Groq: ${groqResults}) (Gemini: ${geminiResults}) (OR: ${orResults})`);
 }
 
@@ -368,29 +357,31 @@ export async function POST(req: NextRequest) {
     }
 
     // 7. SYNTHESIZE
-    const summary = await synthesize(finalContent, orKey, geminiKey, groqKey, videoTitle);
+    const synthesisResult = await synthesize(finalContent, orKey, geminiKey, groqKey, videoTitle, modeUsed);
+    const summary = synthesisResult.text;
+    const debugInfo = synthesisResult.debug;
 
     // 8. DB CACHE
-    if (user && summary.length > 50 && vId && vId !== "manual" && !summary.includes("I'm sorry")) {
+    if (user && summary.length > 50 && vId && vId !== "manual" && !summary.includes("ERROR:")) {
       try {
         await supabase.from("yt_summaries").upsert([{ 
           user_id: user.id, 
           video_id: vId, 
           video_url: videoUrl || "",
           summary, 
-          mode_used: modeUsed 
+          mode_used: `${modeUsed} (${debugInfo})` 
         }], { onConflict: 'video_id' });
       } catch (e) { console.log("DB cache skipped."); }
     }
 
-    return NextResponse.json({ summary, v: "25.1", mode_used: modeUsed });
+    return NextResponse.json({ summary, v: "25.2", debug: debugInfo, mode_used: modeUsed });
 
   } catch (error: any) {
-    console.error("[V25] Critical API Error:", error);
+    console.error("[V25.2] Critical API Error:", error);
     const errorMessage = error?.message || "The backend encountered a severe execution error.";
     return NextResponse.json({ 
-      summary: `Title: Synthesis Failed (v25.1)\nSummary: ${errorMessage}\nKey Points:\n• Please ensure your API keys have sufficient credits.\n• If the video is very new, transcripts may not be available yet.`,
-      v: "25.1"
+      summary: `Title: Synthesis Failed (v25.2)\nSummary: ${errorMessage}\nKey Points:\n• Please ensure your API keys have sufficient credits.\n• If the video is very new, transcripts may not be available yet.`,
+      v: "25.2"
     });
   }
 }
