@@ -105,10 +105,10 @@ export function AppSidebar() {
       <SidebarFooter className="border-t border-border/20 p-6 bg-card space-y-4">
         <div className="flex flex-col gap-1">
           <div className="flex items-center gap-4 italic font-light text-[10px] opacity-30 tracking-widest uppercase">
-             <span>v5.0 Master Edition</span>
+             <span>v6.0 Ultimate Edition</span>
           </div>
           <div className="text-[8px] font-mono text-primary/40 uppercase tracking-tighter">
-            Build: Final_Hardened_v3
+            Build: Ultimate_Hardened_v6
           </div>
         </div>
       </SidebarFooter>

@@ -122,22 +122,58 @@ async function fetchYoutubeMetadata(vId: string) {
   return null;
 }
 
+async function fetchYoutubeMetadataViaFirecrawl(vId: string, apiKey: string) {
+  if (!apiKey) return null;
+  console.log(`[METADATA] Trying Firecrawl for ${vId}...`);
+  try {
+    const res = await fetch("https://api.firecrawl.dev/v1/scrape", {
+      method: "POST",
+      headers: {
+        "Authorization": `Bearer ${apiKey}`,
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        url: `https://www.youtube.com/watch?v=${vId}`,
+        formats: ["markdown"],
+        onlyMainContent: true
+      }),
+      signal: AbortSignal.timeout(30000)
+    });
+    
+    if (res.ok) {
+      const data = await res.json();
+      if (data.success && data.data?.markdown) {
+        return { 
+          title: data.data.metadata?.title || "YouTube Video",
+          description: data.data.markdown.substring(0, 5000)
+        };
+      }
+    }
+  } catch (e) {
+    console.error(`[METADATA] Firecrawl failed:`, e);
+  }
+  return null;
+}
+
 async function synthesize(content: string, orKey: string, geminiKey?: string, groqKey?: string, videoTitle?: string, modeUsed?: string) {
+  const isTranscript = content.toLowerCase().includes("transcript") || modeUsed?.includes("Transcript");
+  
   const prompt = `You are an expert content synthesist. ${videoTitle ? `The video title is "${videoTitle}". ` : ""}
-Summarize the following video transcript/content into 5-8 highly engaging, structured bullet points. 
+Summarize the following video content into 5-8 highly engaging, structured bullet points. 
 Focus on the most actionable insights and "aha!" moments.
 
-CRITICAL INSTRUCTIONS:
-1. DO NOT make up information.
-2. If the content provided is too short, nonsensical, or doesn't look like a transcript/description of the video title "${videoTitle || 'the video'}", say exactly: "ERROR: COULD NOT RETRIEVE VALID DATA. PLEASE PROVIDE TRANSCRIPT MANUALLY."
-3. If you are successful, use the following format:
+DIRECTIONS:
+1. If this is a TRANSCRIPT, treat it as oral wisdom and extract the deepest points.
+2. If this is ONLY a DESCRIPTION/METADATA, summarize what the video IS ABOUT and what a viewer can expect to learn.
+3. DO NOT make up information. If you truly have no data to work with, say exactly: "ERROR: CONTENT TOTALLY INACCESSIBLE."
+4. Format:
 Title: [A Punchy, Curiosity-Gap Title]
 Summary: [1-2 sentences of high-level context]
 Key Points:
 • [Point 1]
 • [Point 2]...
 
-Analyze the tone, core message, and specific details.`;
+Analyze the tone, core message, and specific details. Provide the absolute best value possible.`;
 
   const contentSnippet = content.substring(0, 15000);
   
@@ -334,7 +370,19 @@ export async function POST(req: NextRequest) {
          }
        }
 
-       // B. Fallback to direct scrape if still no title
+       // C. Try Firecrawl (Deep Scrape) if still no content
+       if (!videoTitle || !finalContent) {
+         const fireMeta = await fetchYoutubeMetadataViaFirecrawl(vId, process.env.FIRECRAWL_API_KEY || "");
+         if (fireMeta) {
+           videoTitle = videoTitle || fireMeta.title;
+           if (!finalContent && fireMeta.description) {
+             finalContent = `Video Title: ${fireMeta.title}\n\nVideo Content (Scraped):\n${fireMeta.description}`;
+             modeUsed = "Firecrawl Deep Scrape";
+           }
+         }
+       }
+
+       // D. Fallback to direct scrape
        if (!videoTitle || !finalContent) {
          const metadata = await fetchYoutubeMetadata(vId);
          if (metadata) {
@@ -347,17 +395,17 @@ export async function POST(req: NextRequest) {
        }
     }
 
-    // 6. STOP IF NO DATA (Prevent hallucinations)
-    if (!finalContent || finalContent.length < 20) {
+    // 6. STOP ONLY IF COMPLETELY EMPTY
+    if (!finalContent && !videoTitle) {
       console.warn(`[TRANSCRIPT] STOPPING: No valid content found for ${vId}`);
       return NextResponse.json({ 
-        summary: `Title: Transcript Blocked\nSummary: YouTube is currently blocking our automated access to this video's transcript. \nKey Points:\n• Direct transcripts for this video are unavailable.\n• You can manually paste the transcript in the "Manual Scribe" tab.\n• Or try a different video link.`,
+        summary: `Title: Content Inaccessible\nSummary: YouTube is currently blocking our automated access to this video's data. \nKey Points:\n• Direct transcripts and descriptions are unavailable.\n• You can manually paste the text in the "Manual Scribe" tab.\n• Or try a different video link.`,
         mode_used: "Failure"
       });
     }
 
-    // 7. SYNTHESIZE
-    const synthesisResult = await synthesize(finalContent, orKey, geminiKey, groqKey, videoTitle, modeUsed);
+    // 7. SYNTHESIZE (V6.0 handles short content)
+    const synthesisResult = await synthesize(finalContent || videoTitle || "Unknown Video", orKey, geminiKey, groqKey, videoTitle, modeUsed);
     const summary = synthesisResult.text;
     const debugInfo = synthesisResult.debug;
 
@@ -374,7 +422,7 @@ export async function POST(req: NextRequest) {
       } catch (e) { console.log("DB cache skipped."); }
     }
 
-    return NextResponse.json({ summary, v: "25.2", debug: debugInfo, mode_used: modeUsed });
+    return NextResponse.json({ summary, v: "26.0", debug: debugInfo, mode_used: modeUsed });
 
   } catch (error: any) {
     console.error("[V25.2] Critical API Error:", error);
