@@ -26,9 +26,9 @@ export function SummaryGenerator() {
   const [savedSuccess, setSavedSuccess] = useState(false)
 
   const steps = [
-    "Contacting YouTube (V5.0/Hardened)...",
+    "Spurce Analytics: Dialing YouTube...",
     "Extracting Oral Wisdom...",
-    "Synthesizing with Groq/Gemini..."
+    "Synthesizing with Spurce-AI..."
   ]
 
   const handleGenerate = async (e: React.FormEvent) => {

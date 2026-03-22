@@ -46,7 +46,7 @@ export function TopNav({ user }: TopNavProps) {
         <div className="flex flex-col md:flex-row md:items-center gap-2 font-serif">
           <span className="hidden md:inline-block text-[10px] font-bold tracking-[0.4em] uppercase opacity-40">Digital Workspace</span>
           <div className="hidden md:block h-1 w-1 rounded-full bg-primary/40 mx-2" />
-          <span className="font-heading italic text-lg tracking-tight text-foreground/80">Study Sanctuary</span>
+          <span className="font-heading italic text-lg tracking-tight text-foreground/80">Spurce Sanctuary</span>
         </div>
       </div>
       

@@ -72,7 +72,7 @@ export function AppSidebar() {
              <BirdLogo className="text-primary w-7 h-7 opacity-90 group-hover:scale-110 transition-transform duration-500" />
           </div>
           <div className="flex flex-col leading-none group-data-[collapsible=icon]:hidden">
-            <span className="text-[10px] font-bold tracking-[0.4em] uppercase opacity-40 text-foreground">Study Nest</span>
+            <span className="text-[10px] font-bold tracking-[0.4em] uppercase opacity-40 text-foreground">Spurce</span>
             <span className="font-heading italic text-xl tracking-tight text-primary">Sanctuary</span>
           </div>
         </div>
@@ -105,10 +105,10 @@ export function AppSidebar() {
       <SidebarFooter className="border-t border-border/20 p-6 bg-card space-y-4">
         <div className="flex flex-col gap-1">
           <div className="flex items-center gap-4 italic font-light text-[10px] opacity-30 tracking-widest uppercase">
-             <span>v6.0 Ultimate Edition</span>
+             <span>v7.0 Spurce Edition</span>
           </div>
           <div className="text-[8px] font-mono text-primary/40 uppercase tracking-tighter">
-            Build: Ultimate_Hardened_v6
+            Build: Spurce_Hardened_v7
           </div>
         </div>
       </SidebarFooter>

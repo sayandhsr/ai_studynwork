@@ -422,14 +422,18 @@ export async function POST(req: NextRequest) {
       } catch (e) { console.log("DB cache skipped."); }
     }
 
-    return NextResponse.json({ summary, v: "26.0", debug: debugInfo, mode_used: modeUsed });
+    return NextResponse.json({ 
+      summary, 
+      v: "30.0", 
+      debug: `${debugInfo} | Trace: SPURCE ACTIVE`, 
+      mode_used: modeUsed 
+    });
 
   } catch (error: any) {
-    console.error("[V25.2] Critical API Error:", error);
     const errorMessage = error?.message || "The backend encountered a severe execution error.";
     return NextResponse.json({ 
-      summary: `Title: Synthesis Failed (v25.2)\nSummary: ${errorMessage}\nKey Points:\n• Please ensure your API keys have sufficient credits.\n• If the video is very new, transcripts may not be available yet.`,
-      v: "25.2"
+      summary: `Title: Synthesis Failed (v30.0)\nSummary: ${errorMessage}\nKey Points:\n• Please ensure your API keys have sufficient credits.\n• Trace: SPURCE_FAIL_30.0`,
+      v: "30.0"
     });
   }
 }
