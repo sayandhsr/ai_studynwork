@@ -23,6 +23,7 @@ export async function updateSession(request: NextRequest) {
     request,
   });
 
+  console.log(">>> [MIDDLEWARE] SUPABASE URL:", getSupabaseUrl());
   const supabase = createServerClient(
     getSupabaseUrl(),
     getSupabaseAnonKey(),
@@ -47,9 +48,16 @@ export async function updateSession(request: NextRequest) {
   // IMPORTANT: Avoid writing any logic between createServerClient and
   // supabase.auth.getUser(). A simple mistake could make it very hard to debug
   // issues with users being randomly logged out.
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  let user = null;
+  try {
+    const { data: { user: foundUser } } = await Promise.race([
+      supabase.auth.getUser(),
+      new Promise((_, reject) => setTimeout(() => reject(new Error('Auth timeout')), 3000))
+    ]) as any;
+    user = foundUser;
+  } catch (err: any) {
+    // Silently fail or log to a proper logging service in production
+  }
 
   // Array of public routes that don't require authentication
   const publicRoutes = ["/", "/auth/callback", "/dashboard/youtube"];

@@ -6,7 +6,6 @@ export async function GET(request: Request) {
   const { searchParams, origin } = new URL(request.url);
   const code = searchParams.get("code");
   const next = searchParams.get("next") ?? "/dashboard";
-
   if (code) {
     const cookieStore = await cookies();
 
@@ -31,10 +30,17 @@ export async function GET(request: Request) {
       },
     });
 
-    const { error } = await supabase.auth.exchangeCodeForSession(code);
+    try {
+      const { error } = await Promise.race([
+        supabase.auth.exchangeCodeForSession(code),
+        new Promise((_, reject) => setTimeout(() => reject(new Error('Exchange timeout')), 10000))
+      ]) as any;
 
-    if (!error) {
-      return NextResponse.redirect(`${origin}${next}`);
+      if (!error) {
+        return NextResponse.redirect(`${origin}${next}`);
+      }
+    } catch (err) {
+      console.error("Auth callback exchange failed:", err);
     }
   }
 
