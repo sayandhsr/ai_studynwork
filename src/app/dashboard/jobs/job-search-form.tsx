@@ -21,6 +21,7 @@ interface JobResult {
   apply_link: string
   description?: string
   post_date?: string
+  source?: string
 }
 
 export function JobSearchForm() {
@@ -29,6 +30,7 @@ export function JobSearchForm() {
   const [role, setRole] = useState("")
   const [location, setLocation] = useState("")
   const [experience, setExperience] = useState("")
+  const [sourceNote, setSourceNote] = useState("")
   
   const [loading, setLoading] = useState(false)
   const [savingJob, setSavingJob] = useState<string | null>(null)
@@ -59,6 +61,7 @@ export function JobSearchForm() {
       if (!response.ok) throw new Error(data.error || "Search failed.")
       
       if (data.warning) setWarning(data.warning)
+      if (data.note) setSourceNote(data.note)
       setResults(data.jobs || [])
       if (data.jobs?.length > 0) {
         toast.success(`Found ${data.jobs.length} relevant opportunities.`)
@@ -184,10 +187,13 @@ export function JobSearchForm() {
           <div className="flex items-center gap-3">
              <div className="h-4 w-1 bg-primary rounded-full" />
              <h3 className="text-[10px] font-bold uppercase tracking-[0.3em] text-muted-foreground/60">
-                {loading ? "Scanning Infrastructure..." : results.length > 0 ? "Identified Targets" : "Awaiting Input"}
+                {loading ? "Scanning live sources..." : results.length > 0 ? "Real Opportunities Found" : "Awaiting Input"}
              </h3>
           </div>
-          {results.length > 0 && <span className="text-[10px] font-bold text-primary bg-primary/10 px-2 py-0.5 rounded uppercase tracking-widest">{results.length} Found</span>}
+          <div className="flex items-center gap-3">
+            {sourceNote && results.length > 0 && <span className="text-[10px] font-medium text-muted-foreground">{sourceNote}</span>}
+            {results.length > 0 && <span className="text-[10px] font-bold text-primary bg-primary/10 px-2 py-0.5 rounded uppercase tracking-widest">{results.length} Found</span>}
+          </div>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -234,6 +240,9 @@ export function JobSearchForm() {
                           <MapPin className="h-3.5 w-3.5 text-primary/20" />
                           <span className="truncate">{job.location}</span>
                         </div>
+                        {job.source && (
+                          <span className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground/40 bg-accent/50 px-2 py-0.5 rounded">{job.source}</span>
+                        )}
                       </div>
                     </div>
                   </div>

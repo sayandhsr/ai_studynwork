@@ -20,6 +20,7 @@ import {
   Youtube,
   Cloud,
   Settings,
+  Telescope,
 } from "lucide-react"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
@@ -40,6 +41,11 @@ const navItems = [
     title: "YouTube Summarizer",
     url: "/dashboard/youtube",
     icon: Youtube,
+  },
+  {
+    title: "Deep Research",
+    url: "/dashboard/research",
+    icon: Telescope,
   },
   {
     title: "Job Search",
