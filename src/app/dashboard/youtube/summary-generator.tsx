@@ -1,80 +1,71 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { createClient } from "@/lib/supabase/client"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { Youtube, Wand2, Loader2, Sparkles, CheckCircle2, AlertCircle } from "lucide-react"
-import { motion } from "framer-motion"
-
-import { Textarea } from "@/components/ui/textarea"
+import { 
+  Youtube, Wand2, Loader2, Sparkles, CheckCircle2, 
+  AlertCircle, Copy, ChevronDown, ChevronUp, Play, 
+  Clock, Share2, Bookmark 
+} from "lucide-react"
+import { motion, AnimatePresence } from "framer-motion"
+import { toast } from "sonner"
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { Skeleton } from "@/components/ui/skeleton"
 
 export function SummaryGenerator() {
   const router = useRouter()
   const supabase = createClient()
   const [url, setUrl] = useState("")
-  const [manualTranscript, setManualTranscript] = useState("")
   const [level, setLevel] = useState<"brief" | "detailed" | "actionable">("detailed")
-  const [mode, setMode] = useState<"auto" | "manual">("auto")
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState("")
-  const [progressStep, setProgressStep] = useState(0)
-  const [lastResult, setLastResult] = useState<{ summary: string; mode_used: string; v?: string; debug?: string } | null>(null)
+  const [lastResult, setLastResult] = useState<{ 
+    summary: string; 
+    video_url?: string;
+    video_title?: string;
+    thumbnail?: string;
+  } | null>(null)
   const [savingNote, setSavingNote] = useState(false)
-  const [savedSuccess, setSavedSuccess] = useState(false)
-
-  const steps = [
-    "Spurce Analytics: Dialing YouTube...",
-    "Extracting Oral Wisdom...",
-    "Synthesizing with Spurce-AI..."
-  ]
+  const [isExpanded, setIsExpanded] = useState(true)
 
   const handleGenerate = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (loading) return;
-    
-    if (mode === "auto") {
-      if (!url.trim() || !url.toLowerCase().includes("yout")) {
-          setError("Please enter a valid YouTube link")
-          return
-      }
-    } else {
-      if (!manualTranscript.trim() || manualTranscript.length < 10) {
-          setError("Please paste a transcript or key text")
-          return
-      }
+    if (!url.trim() || !url.toLowerCase().includes("yout")) {
+        toast.error("Valid YouTube URL required.")
+        return
     }
 
     setError("")
     setLastResult(null)
     setLoading(true)
-    setProgressStep(0)
-
-    const progressInterval = setInterval(() => {
-      setProgressStep((prev) => (prev < steps.length - 1 ? prev + 1 : prev))
-    }, 4500)
 
     try {
-      const payload = mode === "auto" ? { url, level } : { manualTranscript, level }
       const response = await fetch("/api/summarize-youtube", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
+        body: JSON.stringify({ url, level }),
       })
 
       const data = await response.json()
-      if (!response.ok) throw new Error(data.summary || "System connection interrupted.");
+      if (!response.ok) throw new Error(data.summary || "Synthesis failed.");
 
-      setLastResult(data)
+      setLastResult({
+        ...data,
+        video_url: url,
+        // Mock metadata if not returned by API
+        video_title: data.summary.match(/Title:\s*(.*)/i)?.[1] || "Video Synthesis",
+        thumbnail: `https://img.youtube.com/vi/${getYouTubeID(url)}/maxresdefault.jpg`
+      })
+      toast.success("Intelligence captured successfully.")
       setUrl("")
-      setManualTranscript("")
       router.refresh()
     } catch (err: any) {
       setError(err.message || "An unexpected error occurred.")
+      toast.error("Synthesis interrupted.")
     } finally {
-      clearInterval(progressInterval)
       setLoading(false)
     }
   }
@@ -82,199 +73,239 @@ export function SummaryGenerator() {
   const handleSaveToNotes = async () => {
     if (!lastResult || savingNote) return;
     setSavingNote(true)
-    setError("")
     try {
       const { data: { user } } = await supabase.auth.getUser()
-      if (!user) throw new Error("Auth required to save notes")
-      const titleMatch = lastResult.summary.match(/Title:\s*(.*)/i);
-      const noteTitle = titleMatch ? titleMatch[1].trim() : `YouTube Synthesis Report`;
+      if (!user) {
+        toast.error("Auth required.")
+        return
+      }
       const { error: dbError } = await supabase.from("notes").insert([{ 
         user_id: user.id, 
-        title: noteTitle, 
+        title: lastResult.video_title || "YouTube Synthesis", 
         content: lastResult.summary 
       }])
       if (dbError) throw dbError;
-      setSavedSuccess(true)
-      setTimeout(() => setSavedSuccess(false), 3000)
+      toast.success("Synthesis committed to archive.")
     } catch (err: any) {
-      setError(err.message || "Failed to save note.")
+      toast.error("Failed to archive.")
     } finally {
       setSavingNote(false)
     }
   }
 
-  const summaryLines = lastResult?.summary.split("\n") || [];
-  const title = summaryLines.find(l => l.toLowerCase().startsWith("title:"))?.split(":")[1]?.trim() || "Synthesis Result";
-  const hasSummary = lastResult?.summary.includes("Summary:");
-  const summaryText = hasSummary ? lastResult?.summary.split("Summary:")[1]?.split("Key Points:")[0]?.trim() : null;
-  const keyPoints = (lastResult?.summary.includes("Key Points:") 
-    ? lastResult?.summary.split("Key Points:")[1]?.split("\n") 
-    : summaryLines.filter(l => l.trim().startsWith("•")))
-    ?.filter(l => l.trim().startsWith("•")) || [];
+  const copyToClipboard = () => {
+    if (!lastResult) return
+    navigator.clipboard.writeText(lastResult.summary)
+    toast.success("Summary copied to clipboard.")
+  }
 
-  const isErrorMessage = lastResult?.summary.includes("ERROR:") || lastResult?.summary.includes("Blocked");
+  const getYouTubeID = (url: string) => {
+    const regExp = /^.*(youtu\.be\/|v\/|u\/\w\/|embed\/|watch\?v=|\&v=)([^#\&\?]*).*/;
+    const match = url.match(regExp);
+    return (match && match[2].length === 11) ? match[2] : null;
+  }
 
   return (
-    <div className="glass-card p-1 group relative overflow-hidden">
-      <div className="p-10 space-y-12">
-        <div className="flex flex-col md:flex-row gap-10 items-start md:items-end justify-between">
-          <Tabs value={mode} onValueChange={(v) => setMode(v as any)} className="w-full md:w-auto">
-            <TabsList className="grid w-80 grid-cols-2 bg-[#0B0F14] border border-border/10 p-1 rounded-none">
-              <TabsTrigger value="auto" className="gap-3 rounded-none text-[10px] font-bold uppercase tracking-[0.2em] data-[state=active]:bg-primary/10 data-[state=active]:text-primary transition-all">
-                <Youtube className="w-3.5 h-3.5" /> Auto
-              </TabsTrigger>
-              <TabsTrigger value="manual" className="gap-3 rounded-none text-[10px] font-bold uppercase tracking-[0.2em] data-[state=active]:bg-primary/10 data-[state=active]:text-primary transition-all">
-                <Wand2 className="w-3.5 h-3.5" /> Manual
-              </TabsTrigger>
-            </TabsList>
-          </Tabs>
-
-          <div className="space-y-4 w-full md:w-auto">
-            <span className="text-[9px] font-bold uppercase tracking-[0.4em] text-muted block text-right">Synthesis Depth</span>
-            <div className="flex gap-2 justify-end">
-               {(['brief', 'detailed', 'actionable'] as const).map((l) => (
-                 <button
+    <div className="space-y-8">
+      {/* Input Section - Premium SaaS Style */}
+      <div className="card-premium p-8 space-y-6 relative overflow-hidden group">
+        <div className="absolute top-0 right-0 p-8 opacity-[0.02] pointer-events-none group-hover:scale-110 transition-transform duration-1000">
+           <Youtube className="w-32 h-32" />
+        </div>
+        
+        <div className="space-y-4 relative z-10">
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+             <div className="space-y-1">
+               <p className="text-[10px] font-bold uppercase tracking-widest text-primary">Capture Engine</p>
+               <h3 className="text-xl font-bold tracking-tight">Synthesize Video Wisdom</h3>
+             </div>
+             
+             <div className="flex bg-muted/50 p-1 rounded-xl">
+                {(['brief', 'detailed', 'actionable'] as const).map((l) => (
+                  <button
                     key={l}
                     onClick={() => setLevel(l)}
-                    className={`px-4 py-2 text-[9px] font-bold uppercase tracking-[0.2em] border transition-all ${level === l ? 'bg-primary/10 border-primary text-primary' : 'bg-transparent border-border/10 text-muted/40 hover:border-primary/40'}`}
-                 >
+                    className={`px-4 py-1.5 rounded-lg text-[9px] font-bold uppercase tracking-wider transition-all ${
+                      level === l 
+                      ? 'bg-background shadow-sm text-primary' 
+                      : 'text-muted-foreground hover:text-foreground'
+                    }`}
+                  >
                     {l}
-                 </button>
-               ))}
-            </div>
+                  </button>
+                ))}
+             </div>
           </div>
+
+          <form onSubmit={handleGenerate} className="flex flex-col sm:flex-row gap-3">
+             <div className="relative flex-1 group/input">
+                <Youtube className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-primary opacity-40 group-focus-within/input:opacity-100 transition-opacity" />
+                <Input
+                  value={url}
+                  onChange={(e) => setUrl(e.target.value)}
+                  placeholder="Paste YouTube recruitment/technical link..."
+                  className="pl-11 h-12 bg-background border-border rounded-xl focus:ring-primary/20 text-sm font-medium"
+                  disabled={loading}
+                />
+             </div>
+             <Button 
+                type="submit" 
+                disabled={loading || !url} 
+                className="h-12 px-8 bg-primary hover:bg-primary/90 text-primary-foreground font-bold uppercase text-xs tracking-widest rounded-xl shadow-lg shadow-primary/10 transition-all active:scale-95"
+              >
+                {loading ? <Loader2 className="h-4 w-4 animate-spin mr-3" /> : <Wand2 className="h-4 w-4 mr-3" />}
+                {loading ? "Synthesizing..." : "Extract Essence"}
+             </Button>
+          </form>
         </div>
+      </div>
 
-        <form onSubmit={handleGenerate} className="flex flex-col gap-10 border-b border-border/5 pb-12">
-          {mode === "auto" ? (
-            <div className="relative group">
-              <Youtube className="absolute left-6 top-1/2 -translate-y-1/2 h-5 w-5 text-muted/20 group-focus-within:text-primary transition-colors" />
-              <Input
-                value={url}
-                onChange={(e) => setUrl(e.target.value)}
-                placeholder="Paste the architectural link here..."
-                className="pl-16 h-20 rounded-none border-border/10 focus-visible:ring-primary/10 bg-[#0B0F14]/50 italic font-light tracking-wide text-xl selection:bg-primary/20"
-                disabled={loading}
-              />
-            </div>
-          ) : (
-            <div className="space-y-4">
-              <Textarea
-                value={manualTranscript}
-                onChange={(e) => setManualTranscript(e.target.value)}
-                placeholder="Inscribe the oral wisdom or text here..."
-                className="min-h-[300px] rounded-none border-border/10 focus-visible:ring-primary/10 bg-[#0B0F14]/50 italic font-light tracking-wide text-xl p-10 resize-none selection:bg-primary/20 leading-relaxed"
-                disabled={loading}
-              />
-            </div>
-          )}
-          
-          <Button type="submit" disabled={loading || (mode === "auto" ? !url : !manualTranscript)} className="h-24 gap-6 rounded-none bg-primary hover:bg-primary/90 transition-all font-bold uppercase tracking-[0.5em] text-xs relative overflow-hidden group shadow-[0_0_30px_rgba(212,175,55,0.15)] text-primary-foreground">
-            {loading ? <Loader2 className="h-6 w-6 animate-spin" /> : <Wand2 className="h-6 w-6 group-hover:rotate-12 transition-transform" />}
-            {loading ? (
-              <div className="flex flex-col items-start leading-none gap-2 text-primary-foreground">
-                <span className="text-[12px]">{steps[progressStep]}</span>
-                <span className="text-[8px] opacity-70">Synchronizing Synthesis Core...</span>
-              </div>
-            ) : "Extract Essence"}
-            <div className="absolute inset-0 bg-white/10 opacity-0 group-hover:opacity-100 transition-opacity skew-x-12 translate-x-full group-hover:translate-x-0 duration-1000" />
-          </Button>
-        </form>
-
-        {error && (
+      <AnimatePresence mode="wait">
+        {loading && (
           <motion.div 
-            initial={{ opacity: 0, scale: 0.98 }}
-            animate={{ opacity: 1, scale: 1 }}
-            className="p-10 bg-destructive/5 border border-destructive/20 text-destructive text-sm font-light italic flex flex-col gap-6 rounded-none"
+            initial={{ opacity: 0, y: 10 }} 
+            animate={{ opacity: 1, y: 0 }} 
+            exit={{ opacity: 0 }}
+            className="card-premium p-8 space-y-6"
           >
-            <div className="flex items-center gap-4">
-              <AlertCircle className="w-6 h-6" />
-              <span className="font-bold uppercase tracking-[0.3em] text-[10px]">Extraction Anomaly Detected</span>
+            <div className="flex gap-6 items-center">
+               <Skeleton className="h-32 w-56 rounded-xl shrink-0" />
+               <div className="space-y-4 flex-1">
+                  <Skeleton className="h-6 w-3/4" />
+                  <Skeleton className="h-4 w-1/2" />
+                  <div className="flex gap-2">
+                     <Skeleton className="h-3 w-16" />
+                     <Skeleton className="h-3 w-16" />
+                  </div>
+               </div>
             </div>
-            <p className="pl-10 leading-relaxed text-lg">{error}</p>
-            <div className="pl-10 pt-6 border-t border-destructive/10 mt-2 text-[10px] opacity-40 uppercase tracking-widest leading-loose">
-              If the transcript is protected, please utilize the Manual Scribe interface for raw text distillation.
+            <div className="space-y-3 pt-6 border-t border-border/50">
+               <Skeleton className="h-4 w-full" />
+               <Skeleton className="h-4 w-full" />
+               <Skeleton className="h-4 w-2/3" />
             </div>
           </motion.div>
         )}
 
         {lastResult && (
           <motion.div 
-            initial={{ opacity: 0, y: 30 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="space-y-12"
+            initial={{ opacity: 0, scale: 0.98 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="space-y-6"
           >
-            <div className={`p-12 rounded-none border ${isErrorMessage ? 'border-red-500/30 bg-red-500/5' : 'border-primary/20 bg-primary/5'} relative overflow-hidden space-y-10`}>
-              <div className="space-y-12 text-left">
-                <div className="space-y-8">
-                  <h3 className={`text-4xl font-heading italic tracking-tight leading-tight ${isErrorMessage ? 'text-red-500' : 'text-foreground/90'}`}>
-                    {title}
-                  </h3>
-                  
-                  {hasSummary ? (
-                    <>
-                      <p className="text-xl font-light italic text-foreground/70 leading-relaxed border-l-2 border-primary/30 pl-8">
-                        {summaryText}
-                      </p>
-                      
-                      <ul className="grid gap-8">
-                        {keyPoints.map((point, i) => (
-                          <motion.li 
-                            key={i}
-                            initial={{ opacity: 0, x: -10 }}
-                            animate={{ opacity: 1, x: 0 }}
-                            transition={{ delay: i * 0.1 }}
-                            className="flex gap-6 text-sm font-light italic leading-relaxed text-foreground/80 group"
-                          >
-                            <span className="text-primary mt-1.5 opacity-40 group-hover:opacity-100 transition-opacity">•</span>
-                            <span>{point.replace("•", "").trim()}</span>
-                          </motion.li>
-                        ))}
-                      </ul>
-                    </>
-                  ) : (
-                    <div className="text-lg font-light italic text-foreground/80 leading-relaxed whitespace-pre-wrap border-l-2 border-primary/30 pl-8">
-                      {lastResult.summary}
-                    </div>
-                  )}
-                </div>
-              </div>
-
-              <div className="pt-10 flex flex-col sm:flex-row gap-6 border-t border-primary/10 items-center justify-between">
-                <div className="flex gap-6">
-                  <Button 
-                    onClick={handleSaveToNotes}
-                    disabled={savingNote || savedSuccess || isErrorMessage}
-                    className="rounded-none bg-primary hover:bg-primary/90 text-primary-foreground h-14 uppercase tracking-[0.3em] text-[10px] font-bold transition-all px-10 border border-primary/20 shadow-lg"
-                  >
-                    {savingNote ? <Loader2 className="h-4 w-4 animate-spin mr-3" /> : (savedSuccess ? <CheckCircle2 className="h-4 w-4 mr-3" /> : <Sparkles className="h-4 w-4 mr-3" />)}
-                    {savedSuccess ? "Secured" : "Commit to Archive"}
+            {/* Video Discovery Card */}
+            <div className="card-premium p-6 flex flex-col md:flex-row gap-6 items-center bg-accent/20">
+               <div className="relative h-32 w-56 rounded-xl overflow-hidden shadow-lg group/thumb shrink-0">
+                  <img src={lastResult.thumbnail} alt="" className="w-full h-full object-cover grayscale-[0.2] group-hover:grayscale-0 transition-all duration-500" />
+                  <div className="absolute inset-0 bg-black/40 flex items-center justify-center">
+                     <Play className="h-8 w-8 text-white opacity-80 group-hover:scale-110 transition-transform" />
+                  </div>
+               </div>
+               <div className="flex-1 space-y-3 text-center md:text-left">
+                  <div className="flex items-center justify-center md:justify-start gap-2">
+                     <span className="text-[10px] font-bold uppercase tracking-widest text-primary px-2 py-0.5 rounded bg-primary/10">Resource Identified</span>
+                     <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest border border-border px-2 py-0.5 rounded">YT-API-v4</span>
+                  </div>
+                  <h4 className="text-xl font-bold tracking-tight leading-tight line-clamp-2">
+                    {lastResult.video_title}
+                  </h4>
+                  <div className="flex items-center justify-center md:justify-start gap-4 text-xs font-medium text-muted-foreground">
+                     <a href={lastResult.video_url} target="_blank" rel="noreferrer" className="flex items-center gap-1.5 hover:text-primary transition-colors">
+                        <Youtube className="h-4 w-4" /> Original Signal
+                     </a>
+                     <div className="h-1 w-1 rounded-full bg-border" />
+                     <span className="flex items-center gap-1.5"><Clock className="h-4 w-4" /> {level.toUpperCase()} ARCHIVE</span>
+                  </div>
+               </div>
+               <div className="flex gap-2">
+                  <Button variant="outline" size="icon" onClick={copyToClipboard} className="rounded-xl h-10 w-10 border-border hover:text-primary"><Copy className="h-4 w-4" /></Button>
+                  <Button variant="outline" size="icon" onClick={() => setIsExpanded(!isExpanded)} className="rounded-xl h-10 w-10 border-border hover:text-primary">
+                    {isExpanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
                   </Button>
-                  <Button 
-                    variant="ghost" 
-                    onClick={() => setLastResult(null)}
-                    className="h-14 text-[10px] font-bold uppercase tracking-[0.3em] hover:bg-primary/5 rounded-none px-10 border border-border/10"
-                  >
-                    Dismiss
-                  </Button>
-                </div>
-                
-                <div className="flex items-center gap-8 px-6">
-                   <div className="flex flex-col items-end">
-                      <span className="text-[8px] uppercase tracking-[0.2em] opacity-30">Active Branch</span>
-                      <span className="text-[10px] font-mono text-primary/60">{lastResult.v || "Legacy"}</span>
-                   </div>
-                   <div className="h-10 w-[1px] bg-primary/10" />
-                   <div className="flex flex-col items-end">
-                      <span className="text-[8px] uppercase tracking-[0.2em] opacity-30">Trace Diagnostic</span>
-                      <span className="text-[11px] font-mono text-primary/60 tracking-wider italic">{lastResult.debug || "No Trace"}</span>
-                   </div>
-                </div>
-              </div>
+               </div>
             </div>
+
+            {/* Summary Output Card */}
+            <AnimatePresence>
+              {isExpanded && (
+                <motion.div 
+                  initial={{ height: 0, opacity: 0 }}
+                  animate={{ height: "auto", opacity: 1 }}
+                  exit={{ height: 0, opacity: 0 }}
+                  className="overflow-hidden"
+                >
+                  <div className="card-premium p-8 space-y-8 bg-card shadow-2xl relative">
+                    <div className="prose prose-sm dark:prose-invert max-w-none">
+                       <div className="space-y-10">
+                          {/* Formatting the summary sections */}
+                          <div className="space-y-8 text-foreground/90">
+                              {lastResult.summary.split('\n\n').map((section, idx) => {
+                                if (section.includes('Key Points:')) {
+                                  return (
+                                    <div key={idx} className="space-y-4">
+                                      <h5 className="text-[10px] font-bold uppercase tracking-[0.2em] text-primary flex items-center gap-2">
+                                        <Sparkles className="h-3.5 w-3.5" /> Logical Anchors
+                                      </h5>
+                                      <div className="grid gap-3 sm:grid-cols-2">
+                                        {section.split('\n').filter(l => l.includes('•')).map((p, i) => (
+                                          <div key={i} className="p-4 rounded-xl bg-accent/30 border border-border/50 text-xs font-medium leading-relaxed flex gap-3 group hover:border-primary/20 transition-all">
+                                             <div className="h-1.5 w-1.5 rounded-full bg-primary/40 mt-1.5 shrink-0 group-hover:scale-125 transition-transform" />
+                                             {p.replace('•', '').trim()}
+                                          </div>
+                                        ))}
+                                      </div>
+                                    </div>
+                                  )
+                                }
+                                if (section.includes('Summary:')) {
+                                   return (
+                                     <div key={idx} className="space-y-4">
+                                       <h5 className="text-[10px] font-bold uppercase tracking-[0.2em] text-primary flex items-center gap-2">
+                                         <Share2 className="h-3.5 w-3.5" /> High-Level Synthesis
+                                       </h5>
+                                       <p className="text-sm border-l-2 border-primary/20 pl-6 py-1 text-muted-foreground leading-relaxed italic font-medium">
+                                         {section.replace('Summary:', '').trim()}
+                                       </p>
+                                     </div>
+                                   )
+                                }
+                                return null
+                              })}
+                              
+                              {/* Fallback for raw output */}
+                              {!lastResult.summary.includes('Summary:') && (
+                                <p className="text-sm leading-relaxed text-muted-foreground whitespace-pre-wrap">{lastResult.summary}</p>
+                              )}
+                          </div>
+                       </div>
+                    </div>
+
+                    <div className="pt-8 border-t border-border/50 flex flex-col sm:flex-row gap-4 items-center justify-between">
+                       <div className="flex items-center gap-2 text-[10px] font-bold text-muted-foreground uppercase opacity-40">
+                          <CheckCircle2 className="h-3.5 w-3.5" /> Trace v9.0 Secure
+                       </div>
+                       <div className="flex items-center gap-3 w-full sm:w-auto">
+                          <Button 
+                            variant="outline" 
+                            disabled={savingNote}
+                            onClick={handleSaveToNotes}
+                            className="flex-1 sm:flex-none h-11 px-6 rounded-xl border-border text-[10px] font-bold uppercase tracking-widest hover:bg-primary/5 hover:text-primary transition-all"
+                          >
+                             {savingNote ? <Loader2 className="h-3.5 w-3.5 animate-spin mr-2" /> : <Bookmark className="h-3.5 w-3.5 mr-2" />}
+                             Archive Synthesis
+                          </Button>
+                          <Button className="flex-1 sm:flex-none h-11 px-8 rounded-xl bg-primary hover:bg-primary/90 text-primary-foreground text-[10px] font-bold uppercase tracking-widest shadow-lg shadow-primary/10">
+                             Download Dataset
+                          </Button>
+                       </div>
+                    </div>
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
           </motion.div>
         )}
-      </div>
+      </AnimatePresence>
     </div>
   )
 }
