@@ -30,12 +30,12 @@ import { motion } from "framer-motion"
 
 const navItems = [
   {
-    title: "Command Center",
+    title: "Dashboard",
     url: "/dashboard",
     icon: LayoutDashboard,
   },
   {
-    title: "Notes Saver",
+    title: "My Notes",
     url: "/dashboard/notes",
     icon: FileText,
   },
@@ -69,7 +69,7 @@ export function AppSidebar() {
           </div>
           <div className="flex flex-col leading-tight group-data-[collapsible=icon]:hidden">
             <span className="text-sm font-bold tracking-tight">Sanctuary</span>
-            <span className="text-[10px] font-medium text-muted-foreground uppercase tracking-widest leading-none">v9.5 Alpha</span>
+            <span className="text-[10px] font-medium text-muted-foreground uppercase tracking-widest leading-none">v10.0 Alpha</span>
           </div>
         </Link>
       </SidebarHeader>
@@ -78,12 +78,12 @@ export function AppSidebar() {
         <Button asChild className="w-full h-11 bg-primary hover:bg-primary/90 text-primary-foreground shadow-lg shadow-primary/10 rounded-xl font-bold uppercase tracking-widest text-[10px] transition-all group/new">
           <Link href="/dashboard/notes/new" className="flex items-center justify-center gap-2">
             <PlusCircle className="h-4 w-4 group-hover/new:rotate-90 transition-transform duration-300" />
-            <span>Initialize Fragment</span>
+            <span>Create Note</span>
           </Link>
         </Button>
       </div>
 
-      <SidebarContent className="py-4">
+      <SidebarContent className="py-2">
         <SidebarGroup>
           <SidebarGroupLabel className="px-4 text-[10px] font-bold uppercase tracking-[0.2em] text-muted-foreground/50 mb-2">Platform</SidebarGroupLabel>
           <SidebarGroupContent>
@@ -97,7 +97,7 @@ export function AppSidebar() {
                       isActive={isActive}
                       tooltip={item.title}
                       onClick={() => setOpenMobile(false)}
-                      className="relative h-10 rounded-md text-sm font-medium transition-all hover:bg-accent/50 data-[active=true]:bg-primary/10 data-[active=true]:text-primary group/item"
+                      className="relative h-11 rounded-xl text-sm font-semibold transition-all hover:bg-accent/50 data-[active=true]:bg-primary/10 data-[active=true]:text-primary group/item active:scale-[0.98]"
                     >
                       <Link href={item.url} className="flex items-center gap-3 px-3">
                         <item.icon className={`h-4 w-4 transition-colors ${isActive ? 'text-primary' : 'text-muted-foreground group-hover/item:text-foreground'}`} />
@@ -125,7 +125,7 @@ export function AppSidebar() {
             <SidebarMenuButton asChild className="h-12 rounded-xl text-muted-foreground hover:text-foreground group/pref active:scale-[0.98] transition-all">
               <Link href="/dashboard/preferences" className="flex items-center w-full px-3">
                 <Settings className="h-4 w-4 mr-3 group-hover/pref:text-primary transition-colors" />
-                <span className="text-sm font-semibold tracking-tight">System Settings</span>
+                <span className="text-sm font-bold tracking-tight">Settings</span>
               </Link>
             </SidebarMenuButton>
           </SidebarMenuItem>

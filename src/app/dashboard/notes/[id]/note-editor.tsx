@@ -1,3 +1,5 @@
+"use client"
+
 import { useState, useEffect, useRef } from "react"
 import { useRouter } from "next/navigation"
 import { createClient } from "@/lib/supabase/client"
@@ -7,17 +9,20 @@ import {
   Save,
   ArrowLeft,
   Loader2,
-  Trash2,
-  Sparkles,
-  PenTool,
-  Hash,
   Pin,
   Printer,
+  ChevronDown,
 } from "lucide-react"
 import { useReactToPrint } from "react-to-print"
 import { toast } from "sonner"
 import Link from "next/link"
 import { TiptapEditor } from "@/components/notes/editor"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
 
 interface NoteData {
   id?: string
@@ -25,7 +30,6 @@ interface NoteData {
   content: string
   category?: string
   pinned?: boolean
-  tags?: string[]
 }
 
 export function NoteEditor({ initialData }: { initialData?: NoteData | null }) {
@@ -41,189 +45,204 @@ export function NoteEditor({ initialData }: { initialData?: NoteData | null }) {
   const contentRef = useRef<HTMLDivElement>(null)
   const handlePrint = useReactToPrint({
     contentRef,
-    documentTitle: title || "Technical Fragment",
+    documentTitle: title || "Note",
   })
-  const [isAutoSaving, setIsAutoSaving] = useState(false)
-  const [lastSaved, setLastSaved] = useState<Date | null>(initialData?.id ? new Date() : null)
   
   const isEditing = !!initialData?.id
 
-  // Implement simple debounced autosave if editing an existing note
+  // Ctrl + S handler
   useEffect(() => {
-    if (!isEditing) return
-
-    const timer = setTimeout(async () => {
-      const hasChanges = title !== initialData?.title || 
-                         content !== initialData?.content || 
-                         category !== initialData?.category || 
-                         pinned !== initialData?.pinned
-
-      if (hasChanges) {
-        setIsAutoSaving(true)
-        
-        const { error } = await supabase
-          .from("notes")
-          .update({ 
-            title: title || "Untitled Fragment", 
-            content,
-            category,
-            pinned
-          })
-          .eq("id", initialData.id)
-          
-        if (!error) {
-          setLastSaved(new Date())
-        }
-        setIsAutoSaving(false)
-        router.refresh()
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key === "s") {
+        e.preventDefault()
+        handleSave()
       }
-    }, 3000) // Auto-save after 3s of inactivity
-
-    return () => clearTimeout(timer)
-  }, [title, content, category, pinned, isEditing, initialData, supabase, router])
+    }
+    window.addEventListener("keydown", handleKeyDown)
+    return () => window.removeEventListener("keydown", handleKeyDown)
+  }, [title, content, category, pinned])
 
   const handleSave = async () => {
-    if (!title.trim() && !content.trim()) return
-
-    setIsSaving(true)
-
-    const { data: { user } } = await supabase.auth.getUser()
-    if (!user) {
-      setIsSaving(false)
+    if (!title.trim()) {
+      toast.error("Please enter a title for your note.")
       return
     }
 
-    if (isEditing) {
-      await supabase
-        .from("notes")
-        .update({ 
-          title: title || "Untitled Fragment", 
-          content,
-          category,
-          pinned
-        })
-        .eq("id", initialData.id)
-        
-      setIsSaving(false)
+    setIsSaving(true)
+    try {
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) throw new Error("Authentication required")
+
+      const notePayload = { 
+        title: title.trim(), 
+        content,
+        category,
+        pinned
+      }
+
+      if (isEditing) {
+        const { error } = await supabase
+          .from("notes")
+          .update(notePayload)
+          .eq("id", initialData.id)
+        if (error) throw error
+      } else {
+        const { error } = await supabase
+          .from("notes")
+          .insert([{ ...notePayload, user_id: user.id }])
+        if (error) throw error
+      }
+
+      toast.success("Note saved successfully.")
       router.push("/dashboard/notes")
-    } else {
-      const { data, error } = await supabase
-        .from("notes")
-        .insert([{ 
-          user_id: user.id, 
-          title: title || "Untitled Fragment", 
-          content,
-          category,
-          pinned
-        }])
-        .select()
-        .single()
-        
+      router.refresh()
+    } catch (err: any) {
+      toast.error(err.message || "Failed to save note.")
+    } finally {
       setIsSaving(false)
-      if (error) {
-        console.error("Save Error:", error)
-        return
-      }
-      
-      if (data) {
-        router.push(`/dashboard/notes`)
-      }
     }
-    
-    router.refresh()
   }
 
   return (
-    <div className="max-w-5xl mx-auto space-y-12 pb-24 font-serif">
-      <div className="flex items-center justify-between border-b border-border/10 pb-8">
-        <div className="flex items-center gap-6">
-          <Button variant="ghost" size="icon" asChild className="h-12 w-12 rounded-none hover:bg-primary/5 text-muted transition-all">
+    <div className="flex flex-col min-h-screen bg-background text-foreground">
+      {/* Top Bar Controls */}
+      <div className="sticky top-0 z-20 w-full border-b border-white/5 bg-background/80 backdrop-blur-md px-6 h-16 flex items-center justify-between">
+        <div className="flex items-center gap-4">
+          <Button variant="ghost" size="icon" asChild className="rounded-xl hover:bg-accent active:scale-95 transition-all">
             <Link href="/dashboard/notes">
               <ArrowLeft className="h-5 w-5" />
             </Link>
           </Button>
-          <div className="space-y-1">
-             <div className="flex items-center gap-2">
-                <div className="h-1.5 w-1.5 rounded-full bg-primary/40" />
-                <span className="text-[10px] font-bold tracking-[0.4em] uppercase text-muted">Note Analysis</span>
-             </div>
-             <p className="text-xs italic text-muted/40 font-light">
-                {isEditing ? (lastSaved ? `Saved at ${lastSaved.toLocaleTimeString()}` : "Syncing...") : "Drafting new note"}
-             </p>
-          </div>
+          <span className="text-sm font-bold text-muted-foreground/60 tracking-tight">Editor</span>
         </div>
-        
-        <div className="flex items-center gap-6">
-           <div className="flex items-center bg-card/50 border border-border/20 p-1 rounded-lg">
-             <button
-               onClick={() => setCategory(category === "technical" ? "" : "technical")}
-               className={`px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider transition-all ${category === "technical" ? "bg-primary text-primary-foreground shadow-sm" : "hover:bg-primary/5 text-muted-foreground"}`}
-             >
-               Technical
-             </button>
-             <button
-               onClick={() => setCategory(category === "reflection" ? "" : "reflection")}
-               className={`px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider transition-all ${category === "reflection" ? "bg-primary text-primary-foreground shadow-sm" : "hover:bg-primary/5 text-muted-foreground"}`}
-             >
-               Reflection
-             </button>
-           </div>
 
-           <button
-             onClick={() => setPinned(!pinned)}
-             className={`flex items-center gap-2 px-4 py-2 border transition-all ${pinned ? "border-primary bg-primary/5 text-primary" : "border-border/20 text-muted-foreground hover:border-primary/30"}`}
-           >
-             <Pin className={`h-3.5 w-3.5 ${pinned ? "fill-primary" : ""}`} />
-             <span className="text-[10px] font-bold uppercase tracking-widest">{pinned ? "Pinned" : "Pin Fragment"}</span>
-           </button>
+        <div className="flex items-center gap-3">
+          {/* Category Dropdown */}
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" className="h-10 rounded-xl border-white/10 text-[10px] font-bold uppercase tracking-widest bg-card/40 hover:bg-accent active:scale-95 transition-all">
+                {category || "Category"} <ChevronDown className="ml-2 h-3 w-3 opacity-50" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-40 rounded-xl border-white/10 bg-popover shadow-2xl p-1">
+              <DropdownMenuItem onClick={() => setCategory("")} className="rounded-lg text-xs font-semibold">General</DropdownMenuItem>
+              <DropdownMenuItem onClick={() => setCategory("technical")} className="rounded-lg text-xs font-semibold">Technical</DropdownMenuItem>
+              <DropdownMenuItem onClick={() => setCategory("reflection")} className="rounded-lg text-xs font-semibold">Reflection</DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
 
-           {isAutoSaving && (
-             <div className="flex items-center gap-2 px-4 py-2 bg-primary/5 border border-primary/10 animate-pulse">
-                <Loader2 className="h-3 w-3 text-primary/60 animate-spin" />
-                <span className="text-[9px] font-bold uppercase tracking-widest text-primary/60">Saving...</span>
-             </div>
-           )}
-           <Button 
+          {/* Pin Toggle */}
+          <Button 
             variant="outline" 
-            size="sm"
-            onClick={() => handlePrint()}
-            className="h-8 rounded-lg border-border text-[10px] font-bold uppercase tracking-widest hover:bg-primary/5 hover:text-primary active:scale-95"
+            size="icon"
+            onClick={() => setPinned(!pinned)}
+            className={`h-10 w-10 rounded-xl border-white/10 active:scale-95 transition-all ${pinned ? "text-primary bg-primary/5 border-primary/20" : "text-muted-foreground hover:text-primary"}`}
           >
-            <Printer className="h-3.5 w-3.5 mr-2" /> Download PDF
+            <Pin className={`h-4 w-4 ${pinned ? "fill-primary" : ""}`} />
           </Button>
 
-           <Button 
-             onClick={handleSave} 
-             disabled={isSaving} 
-             className="rounded-xl h-12 px-10 bg-primary hover:bg-primary/90 font-bold uppercase tracking-[0.2em] text-[10px] transition-all shadow-[0_0_25px_rgba(212,175,55,0.15)] group active:scale-95"
-           >
-             {isSaving ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Save className="h-4 w-4 mr-2 group-hover:scale-110 transition-transform" />}
-             {isEditing ? "Update Note" : "Save Note"}
-           </Button>
+          {/* Print PDF */}
+          <Button 
+            variant="outline" 
+            size="icon"
+            onClick={() => handlePrint()}
+            className="h-10 w-10 rounded-xl border-white/10 hover:text-primary active:scale-95 transition-all"
+          >
+            <Printer className="h-4 w-4" />
+          </Button>
+
+          <div className="w-[1px] h-6 bg-white/10 mx-1" />
+
+          {/* Save Button */}
+          <Button 
+            onClick={handleSave} 
+            disabled={isSaving} 
+            className="h-10 px-6 rounded-xl bg-primary hover:bg-primary/90 text-primary-foreground font-bold uppercase tracking-widest text-[10px] shadow-lg shadow-primary/20 active:scale-95 transition-all"
+          >
+            {isSaving ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Save className="h-4 w-4 mr-2" />}
+            Save Note
+          </Button>
         </div>
       </div>
 
-      <div className="space-y-10" ref={contentRef}>
-        <div className="print:p-12 print:text-black">
-          <Input
-            placeholder="A Title Worth Remembering..."
-            value={title}
-            onChange={(e) => setTitle(e.target.value)}
-            className="text-5xl md:text-6xl font-heading tracking-tight italic border-0 px-0 focus-visible:ring-0 shadow-none rounded-none bg-transparent h-auto placeholder:text-muted/10 selection:bg-primary/20 uppercase print:text-4xl print:mb-8"
-          />
-          
-          <div className="glass-card p-10 min-h-[700px] relative overflow-hidden print:border-none print:shadow-none print:p-0">
-            <div className="absolute top-0 right-0 p-8 opacity-[0.02] pointer-events-none print:hidden">
-               <Save className="w-32 h-32" />
+      {/* Editor Body */}
+      <div className="flex-1 overflow-y-auto pt-16 pb-32">
+        <div className="max-w-3xl mx-auto px-6 space-y-12" ref={contentRef}>
+          {/* Title Area */}
+          <div className="space-y-4 print:p-8">
+            <input
+              type="text"
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              placeholder="Enter note title..."
+              className="w-full bg-transparent text-2xl md:text-3xl font-bold tracking-tight border-b border-transparent focus:border-primary/20 focus:ring-0 placeholder:text-muted-foreground/20 transition-all py-2"
+            />
+            
+            {/* Metadata (Simpler than before) */}
+            <div className="flex items-center gap-4 text-[10px] font-bold uppercase tracking-widest text-muted-foreground/40">
+               <div className="flex items-center gap-1.5 bg-accent/30 px-2 py-1 rounded-md">
+                  <Clock className="h-3 w-3" /> Auto-sync enabled
+               </div>
+               {category && (
+                 <div className="flex items-center gap-1.5 bg-primary/5 text-primary/60 px-2 py-1 rounded-md">
+                    <Hash className="h-3 w-3" /> {category}
+                 </div>
+               )}
             </div>
+          </div>
+
+          {/* Content Area */}
+          <div className="min-h-[600px] prose prose-lg dark:prose-invert max-w-none print:text-black">
             <TiptapEditor 
                content={content} 
                onChange={setContent} 
-               placeholder="Begin your intellectual journey here..."
+               placeholder="Start writing your note..."
             />
           </div>
         </div>
       </div>
     </div>
+  )
+}
+
+function Clock(props: any) {
+  return (
+    <svg
+      {...props}
+      xmlns="http://www.w3.org/2000/svg"
+      width="24"
+      height="24"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <circle cx="12" cy="12" r="10" />
+      <polyline points="12 6 12 12 16 14" />
+    </svg>
+  )
+}
+
+function Hash(props: any) {
+  return (
+    <svg
+      {...props}
+      xmlns="http://www.w3.org/2000/svg"
+      width="24"
+      height="24"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <line x1="4" y1="9" x2="20" y2="9" />
+      <line x1="4" y1="15" x2="20" y2="15" />
+      <line x1="10" y1="3" x2="8" y2="21" />
+      <line x1="16" y1="3" x2="14" y2="21" />
+    </svg>
   )
 }
