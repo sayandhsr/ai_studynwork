@@ -4,8 +4,6 @@ import { SidebarProvider } from "@/components/ui/sidebar"
 import { createClient } from "@/lib/supabase/server"
 import { redirect } from "next/navigation"
 import { PageTransition } from "@/components/page-transition"
-import { AIAssistant } from "@/components/dashboard/ai-assistant"
-import { CommandPalette } from "@/components/dashboard/command-palette"
 
 export default async function DashboardLayout({
   children,
@@ -47,8 +45,6 @@ export default async function DashboardLayout({
             </div>
           </main>
         </div>
-        <AIAssistant />
-        <CommandPalette />
       </div>
     </SidebarProvider>
   )

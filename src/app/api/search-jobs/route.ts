@@ -5,44 +5,45 @@ export async function POST(req: Request) {
     const { role, location, experience } = await req.json()
     const apiKey = process.env.RAPIDAPI_KEY
 
-    // JSearch requires a more descriptive query for best results
-    const searchQuery = `${role} in ${location || "Remote"} ${experience || ""}`
+    const searchQuery = `${role} in ${location || "Remote"} ${experience || ""}`.trim()
     
     // Fallback if no API key
     if (!apiKey) {
       return NextResponse.json({ 
         jobs: [
-          { job_title: `${role} (Preview)`, company: "Sanctuary Alpha", location: location || "Global", apply_link: "#" },
-          { job_title: `Lead ${role} (Preview)`, company: "Orchestra AI", location: "Remote", apply_link: "#" }
+          { job_title: `${role} (Preview)`, company: "Demo Company", location: location || "Remote", apply_link: "#" },
+          { job_title: `Senior ${role} (Preview)`, company: "Tech Corp", location: "Remote", apply_link: "#" }
         ],
-        warning: "API Key missing. Showing preview data."
+        warning: "API key not configured. Showing preview data."
       })
     }
 
-    const response = await fetch(`https://jsearch.p.rapidapi.com/search?query=${encodeURIComponent(searchQuery)}&num_pages=1`, {
-      method: 'GET',
-      headers: {
-        'X-RapidAPI-Key': apiKey,
-        'X-RapidAPI-Host': 'jsearch.p.rapidapi.com'
+    const response = await fetch(
+      `https://jsearch.p.rapidapi.com/search?query=${encodeURIComponent(searchQuery)}&num_pages=1`, 
+      {
+        method: 'GET',
+        headers: {
+          'X-RapidAPI-Key': apiKey,
+          'X-RapidAPI-Host': 'jsearch.p.rapidapi.com'
+        }
       }
-    })
+    )
 
     if (!response.ok) {
-      if (response.status === 403) {
-        throw new Error("API Key exists, but is not subscribed to JSearch on RapidAPI. Please subscribe at rapidapi.com/letscrape-6bRBa3QG1q/api/jsearch.")
-      }
-      const errData = await response.json().catch(() => ({}))
-      throw new Error(errData.message || "RapidAPI connection failed")
+      // Never expose raw API errors to the user
+      console.error("JSearch API error:", response.status, response.statusText)
+      return NextResponse.json(
+        { error: "Job search is temporarily unavailable. Please try again later." }, 
+        { status: 502 }
+      )
     }
 
     const data = await response.json()
     
-    // Handle empty results gracefully
     if (!data.data || data.data.length === 0) {
-      return NextResponse.json({ jobs: [], warning: "No opportunities matched this exact configuration." })
+      return NextResponse.json({ jobs: [], warning: "No jobs found for this search. Try different keywords." })
     }
     
-    // Transform JSearch format to our internal format
     const jobs = data.data.map((job: any) => ({
       job_title: job.job_title,
       company: job.employer_name,
@@ -55,7 +56,10 @@ export async function POST(req: Request) {
     return NextResponse.json({ jobs })
 
   } catch (error: any) {
-    console.error("Job Search API Error:", error)
-    return NextResponse.json({ error: error.message || "Failed to search jobs" }, { status: 500 })
+    console.error("Job Search Error:", error)
+    return NextResponse.json(
+      { error: "Job search unavailable. Please try again later." }, 
+      { status: 500 }
+    )
   }
 }
