@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { Card, CardContent } from "@/components/ui/card"
-import { ArrowLeft, Save, Loader2 } from "lucide-react"
+import { ArrowLeft, Save, Loader2, Pin } from "lucide-react"
 import Link from "next/link"
 
 import { TiptapEditor } from "@/components/notes/editor"
@@ -16,6 +16,8 @@ interface NoteData {
   id?: string
   title: string
   content: string
+  category?: string
+  pinned?: boolean
   tags?: string[]
 }
 
@@ -25,6 +27,8 @@ export function NoteEditor({ initialData }: { initialData?: NoteData | null }) {
   
   const [title, setTitle] = useState(initialData?.title || "")
   const [content, setContent] = useState(initialData?.content || "")
+  const [category, setCategory] = useState(initialData?.category || "")
+  const [pinned, setPinned] = useState(initialData?.pinned || false)
   const [isSaving, setIsSaving] = useState(false)
   const [isAutoSaving, setIsAutoSaving] = useState(false)
   const [lastSaved, setLastSaved] = useState<Date | null>(initialData?.id ? new Date() : null)
@@ -36,12 +40,22 @@ export function NoteEditor({ initialData }: { initialData?: NoteData | null }) {
     if (!isEditing) return
 
     const timer = setTimeout(async () => {
-      if (title !== initialData?.title || content !== initialData?.content) {
+      const hasChanges = title !== initialData?.title || 
+                         content !== initialData?.content || 
+                         category !== initialData?.category || 
+                         pinned !== initialData?.pinned
+
+      if (hasChanges) {
         setIsAutoSaving(true)
         
         const { error } = await supabase
           .from("notes")
-          .update({ title: title || "Untitled Fragment", content })
+          .update({ 
+            title: title || "Untitled Fragment", 
+            content,
+            category,
+            pinned
+          })
           .eq("id", initialData.id)
           
         if (!error) {
@@ -53,7 +67,7 @@ export function NoteEditor({ initialData }: { initialData?: NoteData | null }) {
     }, 3000) // Auto-save after 3s of inactivity
 
     return () => clearTimeout(timer)
-  }, [title, content, isEditing, initialData, supabase, router])
+  }, [title, content, category, pinned, isEditing, initialData, supabase, router])
 
   const handleSave = async () => {
     if (!title.trim() && !content.trim()) return
@@ -69,7 +83,12 @@ export function NoteEditor({ initialData }: { initialData?: NoteData | null }) {
     if (isEditing) {
       await supabase
         .from("notes")
-        .update({ title: title || "Untitled Fragment", content })
+        .update({ 
+          title: title || "Untitled Fragment", 
+          content,
+          category,
+          pinned
+        })
         .eq("id", initialData.id)
         
       setIsSaving(false)
@@ -77,7 +96,13 @@ export function NoteEditor({ initialData }: { initialData?: NoteData | null }) {
     } else {
       const { data, error } = await supabase
         .from("notes")
-        .insert([{ user_id: user.id, title: title || "Untitled Fragment", content }])
+        .insert([{ 
+          user_id: user.id, 
+          title: title || "Untitled Fragment", 
+          content,
+          category,
+          pinned
+        }])
         .select()
         .single()
         
@@ -116,6 +141,29 @@ export function NoteEditor({ initialData }: { initialData?: NoteData | null }) {
         </div>
         
         <div className="flex items-center gap-6">
+           <div className="flex items-center bg-card/50 border border-border/20 p-1 rounded-lg">
+             <button
+               onClick={() => setCategory(category === "technical" ? "" : "technical")}
+               className={`px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider transition-all ${category === "technical" ? "bg-primary text-primary-foreground shadow-sm" : "hover:bg-primary/5 text-muted-foreground"}`}
+             >
+               Technical
+             </button>
+             <button
+               onClick={() => setCategory(category === "reflection" ? "" : "reflection")}
+               className={`px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider transition-all ${category === "reflection" ? "bg-primary text-primary-foreground shadow-sm" : "hover:bg-primary/5 text-muted-foreground"}`}
+             >
+               Reflection
+             </button>
+           </div>
+
+           <button
+             onClick={() => setPinned(!pinned)}
+             className={`flex items-center gap-2 px-4 py-2 border transition-all ${pinned ? "border-primary bg-primary/5 text-primary" : "border-border/20 text-muted-foreground hover:border-primary/30"}`}
+           >
+             <Pin className={`h-3.5 w-3.5 ${pinned ? "fill-primary" : ""}`} />
+             <span className="text-[10px] font-bold uppercase tracking-widest">{pinned ? "Pinned" : "Pin Fragment"}</span>
+           </button>
+
            {isAutoSaving && (
              <div className="flex items-center gap-2 px-4 py-2 bg-primary/5 border border-primary/10 animate-pulse">
                 <Loader2 className="h-3 w-3 text-primary/60 animate-spin" />

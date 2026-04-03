@@ -48,22 +48,19 @@ export default async function NotesPage(props: {
     let notesQuery = supabase
       .from("notes")
       .select("*")
-      .order("pinned", { ascending: false }) // Pinned first
+      .order("pinned", { ascending: false })
       .order("created_at", { ascending: false })
 
-    // Apply search query
     if (query) {
       notesQuery = notesQuery.ilike("title", `%${query}%`)
     }
 
-    // Apply category filter
     if (activeCategory === "pinned") {
       notesQuery = notesQuery.eq("pinned", true)
     } else if (activeCategory !== "all") {
-      notesQuery = notesQuery.eq("category", activeCategory.toLowerCase())
+      notesQuery = notesQuery.ilike("category", activeCategory)
     }
 
-    // Apply time filter
     const now = new Date()
     if (activeTab === "today") {
       notesQuery = notesQuery.gte("created_at", startOfDay(now).toISOString())
@@ -90,7 +87,6 @@ export default async function NotesPage(props: {
 
   return (
     <div className="max-w-6xl mx-auto px-4 py-8 space-y-8">
-      {/* Premium Header */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-6 border-b border-border pb-8">
         <div className="space-y-2">
           <div className="flex items-center gap-2">
@@ -120,7 +116,6 @@ export default async function NotesPage(props: {
         </div>
       </div>
 
-      {/* Categories / Folders - Horizontal Scroll */}
       <div className="flex items-center gap-4 overflow-x-auto pb-4 scrollbar-hide">
         {categoryOptions.map((cat) => (
           <Link 
@@ -138,7 +133,6 @@ export default async function NotesPage(props: {
         ))}
       </div>
 
-      {/* Main Tabs and Grid */}
       <Tabs defaultValue={activeTab} className="space-y-8">
         <div className="flex items-center justify-between">
           <TabsList className="bg-muted/50 p-1 rounded-xl h-10">
@@ -164,85 +158,29 @@ export default async function NotesPage(props: {
 
         <TabsContent value={activeTab} className="mt-0">
           {notes.length > 0 ? (
-            <motion.div 
-              variants={container}
-              initial="hidden"
-              animate="show"
-              className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3"
-            >
-              {notes.map((note: any) => (
+            <div className="space-y-12">
+              {activeTab === "all" ? (
+                <>
+                  {renderNoteSection("Today", notes.filter(n => new Date(n.created_at) >= startOfDay(new Date())))}
+                  {renderNoteSection("This Week", notes.filter(n => {
+                    const d = new Date(n.created_at)
+                    return d < startOfDay(new Date()) && d >= subDays(startOfDay(new Date()), 7)
+                  }))}
+                  {renderNoteSection("Earlier", notes.filter(n => new Date(n.created_at) < subDays(startOfDay(new Date()), 7)))}
+                </>
+              ) : (
                 <motion.div 
-                  key={note.id} 
-                  variants={item}
-                  className={`group p-6 rounded-2xl border transition-all flex flex-col h-full shadow-sm relative overflow-hidden ${
-                    note.pinned 
-                      ? "border-primary/40 bg-primary/[0.02]" 
-                      : "border-border bg-card/60 hover:bg-card hover:border-primary/40"
-                  }`}
+                  variants={container}
+                  initial="hidden"
+                  animate="show"
+                  className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3"
                 >
-                  {note.pinned && (
-                    <div className="absolute top-4 right-4">
-                      <Pin className="h-3 w-3 text-primary fill-primary animate-pulse" />
-                    </div>
-                  )}
-                  
-                  <div className="flex-1 space-y-4 relative z-10">
-                    <div className="flex items-start justify-between pr-8">
-                       <Link href={`/dashboard/notes/${note.id}`} className="flex-1 min-w-0">
-                         <h4 className="text-lg font-bold text-foreground group-hover:text-primary transition-colors line-clamp-2 leading-tight">
-                           {note.title || "Untitled Fragment"}
-                         </h4>
-                         <div className="flex flex-wrap items-center gap-3 mt-3">
-                           <div className="flex items-center gap-1.5 text-[9px] font-bold uppercase tracking-widest text-muted-foreground/60">
-                             <CalendarDays className="h-3 w-3 text-primary/40" />
-                             {formatDistanceToNow(new Date(note.created_at), { addSuffix: true })}
-                           </div>
-                           {note.category && (
-                             <div className="flex items-center gap-1.5 text-[9px] font-bold uppercase tracking-widest text-primary/60 bg-primary/5 px-2 py-0.5 rounded">
-                               <Tag className="h-3 w-3" />
-                               {note.category}
-                             </div>
-                           )}
-                         </div>
-                       </Link>
-                       <div className="absolute top-4 right-4 sm:static flex items-center">
-                         <DropdownMenu>
-                           <DropdownMenuTrigger asChild>
-                             <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-primary rounded-lg -mr-2">
-                               <MoreVertical className="h-4 w-4" />
-                             </Button>
-                           </DropdownMenuTrigger>
-                           <DropdownMenuContent align="end" className="p-1.5 rounded-xl border-border bg-popover shadow-2xl">
-                             <DropdownMenuItem asChild className="rounded-lg h-9 text-xs font-semibold">
-                               <Link href={`/dashboard/notes/${note.id}`} className="flex items-center gap-2">
-                                 <ArrowUpRight className="h-4 w-4 text-primary" />
-                                 <span>Open Fragment</span>
-                               </Link>
-                             </DropdownMenuItem>
-                             <DropdownMenuItem className="rounded-lg h-9 text-xs font-semibold text-red-400 focus:text-red-400">
-                               <DeleteNoteButton id={note.id} />
-                             </DropdownMenuItem>
-                           </DropdownMenuContent>
-                         </DropdownMenu>
-                       </div>
-                    </div>
-                    
-                    <p className="text-sm leading-relaxed text-muted-foreground line-clamp-4 font-medium opacity-80 group-hover:opacity-100 transition-opacity">
-                      {note.content?.substring(0, 200).replace(/[#*`_~]/g, '') || "The depth of this wisdom is still unfolding..."}
-                    </p>
-                  </div>
-
-                  <div className="mt-8 flex items-center justify-between pt-4 border-t border-border/50 translate-y-2 opacity-0 group-hover:translate-y-0 group-hover:opacity-100 transition-all duration-300">
-                     <div className="flex items-center gap-1">
-                        <span className="text-[9px] font-bold text-primary/40 uppercase tracking-tighter">System Log: Verified</span>
-                     </div>
-                     <Link href={`/dashboard/notes/${note.id}`} className="text-[10px] font-bold uppercase tracking-widest text-primary hover:underline flex items-center">
-                        Synthesize <ArrowUpRight className="h-3 w-3 ml-1" />
-                     </Link>
-                  </div>
+                  {notes.map((note: any) => (
+                    <NoteCard key={note.id} note={note} />
+                  ))}
                 </motion.div>
-              ))}
-            </motion.div>
+              )}
+            </div>
           ) : (
             <div className="text-center py-24 border-2 border-dashed border-border/60 rounded-3xl space-y-6">
               <div className="p-4 rounded-full bg-primary/5 w-fit mx-auto">
@@ -260,5 +198,101 @@ export default async function NotesPage(props: {
         </TabsContent>
       </Tabs>
     </div>
+  )
+}
+
+function renderNoteSection(title: string, sectionNotes: any[]) {
+  if (sectionNotes.length === 0) return null
+  return (
+    <div className="space-y-6">
+      <div className="flex items-center gap-4">
+         <h3 className="text-[10px] font-black uppercase tracking-[0.3em] text-muted-foreground/40 shrink-0">{title}</h3>
+         <div className="h-[1px] w-full bg-border/40" />
+      </div>
+      <motion.div 
+        variants={container}
+        initial="hidden"
+        animate="show"
+        className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3"
+      >
+        {sectionNotes.map((note: any) => (
+          <NoteCard key={note.id} note={note} />
+        ))}
+      </motion.div>
+    </div>
+  )
+}
+
+function NoteCard({ note }: { note: any }) {
+  return (
+    <motion.div 
+      variants={item}
+      className={`group p-6 rounded-2xl border transition-all flex flex-col h-full shadow-sm relative overflow-hidden ${
+        note.pinned 
+          ? "border-primary/40 bg-primary/[0.02]" 
+          : "border-border bg-card/60 hover:bg-card hover:border-primary/40"
+      }`}
+    >
+      {note.pinned && (
+        <div className="absolute top-4 right-4">
+          <Pin className="h-3 w-3 text-primary fill-primary animate-pulse" />
+        </div>
+      )}
+      
+      <div className="flex-1 space-y-4 relative z-10">
+        <div className="flex items-start justify-between pr-8">
+           <Link href={`/dashboard/notes/${note.id}`} className="flex-1 min-w-0">
+             <h4 className="text-lg font-bold text-foreground group-hover:text-primary transition-colors line-clamp-2 leading-tight">
+               {note.title || "Untitled Fragment"}
+             </h4>
+             <div className="flex flex-wrap items-center gap-3 mt-3">
+               <div className="flex items-center gap-1.5 text-[9px] font-bold uppercase tracking-widest text-muted-foreground/60">
+                 <CalendarDays className="h-3 w-3 text-primary/40" />
+                 {formatDistanceToNow(new Date(note.created_at), { addSuffix: true })}
+               </div>
+               {note.category && (
+                 <div className="flex items-center gap-1.5 text-[9px] font-bold uppercase tracking-widest text-primary/60 bg-primary/5 px-2 py-0.5 rounded text-xs">
+                   <Tag className="h-3 w-3" />
+                   {note.category}
+                 </div>
+               )}
+             </div>
+           </Link>
+           <div className="absolute top-4 right-4 sm:static flex items-center">
+             <DropdownMenu>
+               <DropdownMenuTrigger asChild>
+                 <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-primary rounded-lg -mr-2">
+                   <MoreVertical className="h-4 w-4" />
+                 </Button>
+               </DropdownMenuTrigger>
+               <DropdownMenuContent align="end" className="p-1.5 rounded-xl border-border bg-popover shadow-2xl">
+                 <DropdownMenuItem asChild className="rounded-lg h-9 text-xs font-semibold">
+                   <Link href={`/dashboard/notes/${note.id}`} className="flex items-center gap-2">
+                     <ArrowUpRight className="h-4 w-4 text-primary" />
+                     <span>Open Fragment</span>
+                   </Link>
+                 </DropdownMenuItem>
+                 <DropdownMenuItem className="rounded-lg h-9 text-xs font-semibold text-red-400 focus:text-red-400">
+                   <DeleteNoteButton id={note.id} />
+                 </DropdownMenuItem>
+               </DropdownMenuContent>
+             </DropdownMenu>
+           </div>
+        </div>
+        
+        <p className="text-sm leading-relaxed text-muted-foreground line-clamp-4 font-medium opacity-80 group-hover:opacity-100 transition-opacity">
+          {note.content?.substring(0, 200).replace(/[#*`_~]/g, '') || "The depth of this wisdom is still unfolding..."}
+        </p>
+      </div>
+
+      <div className="mt-8 flex items-center justify-between pt-4 border-t border-border/50 translate-y-2 opacity-0 group-hover:translate-y-0 group-hover:opacity-100 transition-all duration-300">
+         <div className="flex items-center gap-1">
+            <span className="text-[9px] font-bold text-primary/40 uppercase tracking-tighter">System Log: Verified</span>
+         </div>
+         <Link href={`/dashboard/notes/${note.id}`} className="text-[10px] font-bold uppercase tracking-widest text-primary hover:underline flex items-center">
+            Synthesize <ArrowUpRight className="h-3 w-3 ml-1" />
+         </Link>
+      </div>
+    </motion.div>
   )
 }

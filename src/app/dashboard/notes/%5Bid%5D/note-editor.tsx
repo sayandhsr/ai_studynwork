@@ -10,7 +10,6 @@ import Link from "next/link"
 import { TiptapEditor } from "@/components/notes/editor"
 import { motion } from "framer-motion"
 import { toast } from "sonner"
-import { logActivity } from "@/lib/activity"
 import { 
   Select, 
   SelectContent, 
@@ -88,7 +87,6 @@ export function NoteEditor({ initialData }: { initialData?: NoteData | null }) {
           .update({ title: title || "Untitled Fragment", content, category, pinned })
           .eq("id", initialData.id)
         
-        await logActivity("note_updated", title || "Untitled Fragment")
         toast.success("Fragment preservation complete.")
         router.push("/dashboard/notes")
       } else {
@@ -105,7 +103,6 @@ export function NoteEditor({ initialData }: { initialData?: NoteData | null }) {
           .single()
         
         if (error) throw error
-        await logActivity("note_created", title || "Untitled Fragment")
         toast.success("New fragment inscribed.")
         router.push(`/dashboard/notes`)
       }

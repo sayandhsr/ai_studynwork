@@ -12,9 +12,8 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { ThemeToggle } from "./theme-toggle"
-import { NotificationsDropdown } from "./dashboard/notifications-dropdown"
 import { SidebarTrigger } from "@/components/ui/sidebar"
-import { LogOut, User as UserIcon, Settings, Bell } from "lucide-react"
+import { LogOut, User as UserIcon, Settings } from "lucide-react"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
 import { motion } from "framer-motion"
@@ -57,7 +56,6 @@ export function TopNav({ user }: TopNavProps) {
       </div>
       
       <div className="flex items-center gap-2 md:gap-4">
-        <NotificationsDropdown />
         <ThemeToggle />
         
         <div className="h-6 w-[1px] bg-border mx-1 hidden sm:block" />

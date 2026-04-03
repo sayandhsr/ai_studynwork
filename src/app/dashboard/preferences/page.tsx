@@ -2,9 +2,9 @@ import { createClient } from "@/lib/supabase/server"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { ThemeToggle } from "@/components/theme-toggle"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { SettingsActions } from "./settings-actions"
+import { PreferencesActions } from "./preferences-actions"
 
-export default async function SettingsPage() {
+export default async function PreferencesPage() {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
 
@@ -21,47 +21,47 @@ export default async function SettingsPage() {
     : profile.email?.substring(0, 2).toUpperCase() || "U"
 
   return (
-    <div className="space-y-8 max-w-4xl">
+    <div className="space-y-8 max-w-4xl animate-in fade-in duration-500">
       <div>
-        <h1 className="text-3xl font-bold tracking-tight">Settings</h1>
-        <p className="text-muted-foreground">Manage your account settings and preferences.</p>
+        <h1 className="text-3xl font-bold tracking-tight">Preferences</h1>
+        <p className="text-muted-foreground font-medium">Manage your workspace identity and technical protocols.</p>
       </div>
 
       <div className="grid gap-6">
-        <Card>
+        <Card className="rounded-2xl shadow-sm border-border">
           <CardHeader>
-            <CardTitle>Profile Information</CardTitle>
-            <CardDescription>Update your account details synced via Google</CardDescription>
+            <CardTitle className="text-lg">Identity Profile</CardTitle>
+            <CardDescription className="text-xs">Synced via external provider</CardDescription>
           </CardHeader>
           <CardContent className="flex items-center gap-6">
-            <Avatar className="h-20 w-20">
+            <Avatar className="h-20 w-20 border-2 border-border shadow-lg">
               <AvatarImage src={profile.avatar_url || ""} alt={profile.name || "User"} />
-              <AvatarFallback className="text-2xl">{initials}</AvatarFallback>
+              <AvatarFallback className="text-2xl font-bold bg-primary/10 text-primary">{initials}</AvatarFallback>
             </Avatar>
             <div className="space-y-1">
-               <p className="font-medium text-lg leading-none">{profile.name}</p>
-               <p className="text-sm text-muted-foreground">{profile.email}</p>
+               <p className="font-bold text-xl leading-none">{profile.name}</p>
+               <p className="text-xs text-muted-foreground font-medium tracking-tight">{profile.email}</p>
             </div>
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className="rounded-2xl shadow-sm border-border">
           <CardHeader>
-            <CardTitle>Appearance</CardTitle>
-            <CardDescription>Customize the theme of your workspace.</CardDescription>
+            <CardTitle className="text-lg">Appearance Mode</CardTitle>
+            <CardDescription className="text-xs">Standardized workspace visuals</CardDescription>
           </CardHeader>
           <CardContent className="flex items-center justify-between">
             <div className="space-y-1">
-              <p className="font-medium">Theme Preference</p>
-              <p className="text-sm text-muted-foreground">Toggle between Light (Creamy) and Dark (Instagram Style) mode.</p>
+              <p className="font-bold text-sm">Visual Identity</p>
+              <p className="text-[11px] text-muted-foreground font-medium">Toggle between Luxury (Default) and Dark interface.</p>
             </div>
-            <div className="scale-125">
+            <div className="">
                <ThemeToggle />
             </div>
           </CardContent>
         </Card>
 
-        <SettingsActions />
+        <PreferencesActions />
       </div>
     </div>
   )
