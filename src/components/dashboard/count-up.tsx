@@ -11,9 +11,16 @@ export function CountUp({ value }: { value: number }) {
   
   const displayValue = useTransform(springValue, (latest) => Math.floor(latest));
 
+  const [mounted, setMounted] = useState(false);
+
   useEffect(() => {
+    setMounted(true);
     springValue.set(value);
   }, [value, springValue]);
+
+  if (!mounted) {
+    return <span>{value}</span>;
+  }
 
   return <motion.span>{displayValue}</motion.span>;
 }
