@@ -145,10 +145,10 @@ export function NoteEditor({ initialData }: { initialData?: NoteData | null }) {
           <div className="space-y-1">
              <div className="flex items-center gap-2">
                 <div className="h-1.5 w-1.5 rounded-full bg-primary/40" />
-                <span className="text-[10px] font-bold tracking-[0.4em] uppercase text-muted">Document Registry</span>
+                <span className="text-[10px] font-bold tracking-[0.4em] uppercase text-muted">Note Analysis</span>
              </div>
              <p className="text-xs italic text-muted/40 font-light">
-                {isEditing ? (lastSaved ? `Last preserved ${lastSaved.toLocaleTimeString()}` : "Synchronizing...") : "New fragment initialization"}
+                {isEditing ? (lastSaved ? `Saved at ${lastSaved.toLocaleTimeString()}` : "Syncing...") : "Drafting new note"}
              </p>
           </div>
         </div>
@@ -180,25 +180,25 @@ export function NoteEditor({ initialData }: { initialData?: NoteData | null }) {
            {isAutoSaving && (
              <div className="flex items-center gap-2 px-4 py-2 bg-primary/5 border border-primary/10 animate-pulse">
                 <Loader2 className="h-3 w-3 text-primary/60 animate-spin" />
-                <span className="text-[9px] font-bold uppercase tracking-widest text-primary/60">Preserving...</span>
+                <span className="text-[9px] font-bold uppercase tracking-widest text-primary/60">Saving...</span>
              </div>
            )}
            <Button 
             variant="outline" 
             size="sm"
             onClick={() => handlePrint()}
-            className="h-8 rounded-lg border-border text-[10px] font-bold uppercase tracking-widest hover:bg-primary/5 hover:text-primary"
+            className="h-8 rounded-lg border-border text-[10px] font-bold uppercase tracking-widest hover:bg-primary/5 hover:text-primary active:scale-95"
           >
             <Printer className="h-3.5 w-3.5 mr-2" /> Download PDF
           </Button>
 
-          <Button 
+           <Button 
              onClick={handleSave} 
              disabled={isSaving} 
-             className="rounded-none h-14 px-10 bg-primary hover:bg-primary/90 font-bold uppercase tracking-[0.3em] text-[10px] transition-all shadow-[0_0_25px_rgba(212,175,55,0.15)] group"
+             className="rounded-xl h-12 px-10 bg-primary hover:bg-primary/90 font-bold uppercase tracking-[0.2em] text-[10px] transition-all shadow-[0_0_25px_rgba(212,175,55,0.15)] group active:scale-95"
            >
              {isSaving ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Save className="h-4 w-4 mr-2 group-hover:scale-110 transition-transform" />}
-             {isEditing ? "Archive Changes" : "Finalize Fragment"}
+             {isEditing ? "Update Note" : "Save Note"}
            </Button>
         </div>
       </div>

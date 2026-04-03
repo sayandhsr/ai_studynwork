@@ -119,6 +119,18 @@ export function AppSidebar() {
         </SidebarGroup>
       </SidebarContent>
 
+      <SidebarFooter className="p-4 border-t border-border/50">
+        <SidebarMenu>
+          <SidebarMenuItem>
+            <SidebarMenuButton asChild className="h-12 rounded-xl text-muted-foreground hover:text-foreground group/pref active:scale-[0.98] transition-all">
+              <Link href="/dashboard/preferences" className="flex items-center w-full px-3">
+                <Settings className="h-4 w-4 mr-3 group-hover/pref:text-primary transition-colors" />
+                <span className="text-sm font-semibold tracking-tight">System Settings</span>
+              </Link>
+            </SidebarMenuButton>
+          </SidebarMenuItem>
+        </SidebarMenu>
+      </SidebarFooter>
     </Sidebar>
   )
 }

@@ -7,6 +7,10 @@ import {
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
+import { 
+  BarChart, Bar, XAxis, YAxis, CartesianGrid, 
+  Tooltip, ResponsiveContainer, AreaChart, Area 
+} from "recharts"
 
 export default async function DashboardPage() {
   const supabase = await createClient()
@@ -23,27 +27,46 @@ export default async function DashboardPage() {
   ])
 
   const stats = [
-    { label: "Intel Fragments", value: notesCount.count || 0, icon: FileText, color: "text-blue-500", bg: "bg-blue-500/10" },
-    { label: "Video Synthesis", value: ytCount.count || 0, icon: Youtube, color: "text-red-500", bg: "bg-red-500/10" },
-    { label: "Market Vectors", value: jobsCount.count || 0, icon: Briefcase, color: "text-emerald-500", bg: "bg-emerald-500/10" },
+    { label: "Total Notes", value: notesCount.count || 0, icon: FileText, color: "text-blue-500", bg: "bg-blue-500/10" },
+    { label: "Video Summaries", value: ytCount.count || 0, icon: Youtube, color: "text-red-500", bg: "bg-red-500/10" },
+    { label: "Job Opportunities", value: jobsCount.count || 0, icon: Briefcase, color: "text-emerald-500", bg: "bg-emerald-500/10" },
+  ]
+
+  // Mock data for the graph (would ideally be aggregated from Supabase)
+  const usageData = [
+    { name: "Mon", value: 4 },
+    { name: "Tue", value: 7 },
+    { name: "Wed", value: 5 },
+    { name: "Thu", value: 12 },
+    { name: "Fri", value: 8 },
+    { name: "Sat", value: 15 },
+    { name: "Sun", value: 10 },
   ]
 
   return (
     <div className="max-w-6xl mx-auto px-4 py-10 space-y-12">
-      {/* Hero Section */}
-      <div className="space-y-4">
-        <div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.4em] text-primary">
-          <Activity className="h-3 w-3" />
-          System Operational
+      {/* Welcome Hero */}
+      <div className="relative p-10 rounded-3xl bg-secondary/30 border border-border/50 overflow-hidden group">
+        <div className="absolute top-0 right-0 p-10 opacity-[0.05] pointer-events-none group-hover:scale-110 transition-transform duration-1000">
+           <Zap className="w-48 h-48" />
         </div>
-        <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
-          <div className="space-y-1">
-            <h1 className="text-4xl font-black tracking-tight text-foreground uppercase italic">Command Center</h1>
-            <p className="text-muted-foreground font-medium text-sm">Strategic overview of your intellectual property and market positioning.</p>
+        <div className="relative z-10 space-y-6">
+          <div className="space-y-2">
+            <h1 className="text-4xl md:text-5xl font-black tracking-tight text-foreground">
+              Welcome back, <span className="text-primary">{user.email?.split('@')[0]}</span>
+            </h1>
+            <p className="text-lg text-muted-foreground font-medium max-w-2xl">
+              Your personal intelligence engine is ready. Explore your saved insights and market opportunities.
+            </p>
           </div>
-          <Button asChild className="rounded-none px-8 font-bold uppercase tracking-widest text-[10px] h-12 shadow-xl shadow-primary/20">
-            <Link href="/dashboard/notes/new">Initialize New Fragment</Link>
-          </Button>
+          <div className="flex flex-wrap gap-4 pt-4">
+             <Button asChild className="h-12 px-8 rounded-xl font-bold uppercase tracking-widest text-[11px] shadow-xl shadow-primary/20 hover:scale-[1.02] active:scale-[0.98] transition-all">
+                <Link href="/dashboard/notes/new">Inscribe New Note</Link>
+             </Button>
+             <Button variant="outline" asChild className="h-12 px-8 rounded-xl font-bold uppercase tracking-widest text-[11px] bg-background/50 hover:bg-accent active:scale-[0.98] transition-all">
+                <Link href="/dashboard/youtube">Summarize Video</Link>
+             </Button>
+          </div>
         </div>
       </div>
 
@@ -70,73 +93,117 @@ export default async function DashboardPage() {
         ))}
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-        {/* Recent Analysis/Updates */}
-        <div className="space-y-6">
-          <div className="flex items-center justify-between border-b border-border/10 pb-4">
-             <h3 className="text-xs font-black uppercase tracking-[0.3em] flex items-center gap-2">
-                <Clock className="h-4 w-4 text-primary" />
-                Recent Analysis
-             </h3>
-             <Link href="/dashboard/notes" className="text-[10px] font-bold uppercase tracking-widest text-primary hover:underline">View All</Link>
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        {/* Usage Analytics Graph */}
+        <Card className="lg:col-span-2 rounded-3xl border-border/10 bg-card/30 backdrop-blur-sm p-6 space-y-6">
+          <div className="space-y-1">
+             <h3 className="text-lg font-bold tracking-tight">Usage Analysis</h3>
+             <p className="text-xs text-muted-foreground font-medium">Activity trends over the last 7 tactical days.</p>
           </div>
-          <div className="space-y-4">
-            {recentNotes.data?.length ? (
-              recentNotes.data.map((note) => (
-                <Link key={note.id} href={`/dashboard/notes/${note.id}`} className="group block p-6 bg-card/20 border border-border/50 hover:border-primary/20 transition-all">
-                  <div className="flex justify-between items-start gap-4">
-                    <div className="space-y-2">
-                      <h4 className="font-bold text-sm uppercase tracking-tight group-hover:text-primary transition-colors">{note.title || "Untitled Fragment"}</h4>
-                      <p className="text-xs text-muted-foreground line-clamp-1 italic font-medium">{note.content?.replace(/<[^>]*>/g, '').substring(0, 100)}...</p>
-                    </div>
-                    <ArrowRight className="h-4 w-4 text-muted group-hover:text-primary group-hover:translate-x-1 transition-all" />
-                  </div>
-                </Link>
-              ))
-            ) : (
-              <div className="py-10 text-center border border-dashed border-border/20 rounded-lg">
-                <p className="text-xs text-muted font-bold uppercase tracking-widest">Awaiting intake data</p>
-              </div>
-            )}
+          <div className="h-[300px] w-full">
+            <ResponsiveContainer width="100%" height="100%">
+              <AreaChart data={usageData}>
+                <defs>
+                  <linearGradient id="colorValue" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="hsl(var(--primary))" stopOpacity={0.3}/>
+                    <stop offset="95%" stopColor="hsl(var(--primary))" stopOpacity={0}/>
+                  </linearGradient>
+                </defs>
+                <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" opacity={0.3} vertical={false} />
+                <XAxis 
+                  dataKey="name" 
+                  axisLine={false} 
+                  tickLine={false} 
+                  tick={{ fontSize: 10, fontWeight: 500, fill: "hsl(var(--muted-foreground))" }}
+                  dy={10}
+                />
+                <YAxis hide />
+                <Tooltip 
+                  contentStyle={{ 
+                    backgroundColor: "hsl(var(--card))", 
+                    borderColor: "hsl(var(--border))",
+                    borderRadius: "12px",
+                    fontSize: "12px"
+                  }} 
+                />
+                <Area 
+                  type="monotone" 
+                  dataKey="value" 
+                  stroke="hsl(var(--primary))" 
+                  strokeWidth={3}
+                  fillOpacity={1} 
+                  fill="url(#colorValue)" 
+                />
+              </AreaChart>
+            </ResponsiveContainer>
           </div>
-        </div>
+        </Card>
 
-        {/* System Usage / Analysis */}
+        {/* Quick Options / Analysis */}
         <div className="space-y-6">
-          <div className="flex items-center justify-between border-b border-border/10 pb-4">
-             <h3 className="text-xs font-black uppercase tracking-[0.3em] flex items-center gap-2">
-                <TrendingUp className="h-4 w-4 text-primary" />
-                Growth Velocity
-             </h3>
-          </div>
-          <div className="p-8 bg-primary/5 border border-primary/10 space-y-8 relative overflow-hidden">
-             <div className="absolute -bottom-4 -right-4 opacity-[0.05]">
-                <Activity className="h-32 w-32" />
-             </div>
-             <div className="space-y-2 relative z-10">
-                <p className="text-[10px] font-bold uppercase tracking-widest text-primary">Intelligence Saturation</p>
-                <div className="h-2 w-full bg-background/50 rounded-full overflow-hidden">
-                   <div 
-                    className="h-full bg-primary" 
-                    style={{ width: `${Math.min(((notesCount.count || 0) + (ytCount.count || 0)) * 2, 100)}%` }} 
-                   />
+           <Card className="rounded-3xl border-border/10 bg-card/30 backdrop-blur-sm p-6 space-y-6">
+              <div className="space-y-1 border-b border-border/10 pb-4">
+                 <h3 className="text-sm font-bold uppercase tracking-widest flex items-center gap-2">
+                    <TrendingUp className="h-4 w-4 text-primary" />
+                    Growth Sync
+                 </h3>
+              </div>
+              <div className="space-y-8">
+                 <div className="space-y-3">
+                    <div className="flex justify-between items-end">
+                       <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Notes Density</p>
+                       <p className="text-xs font-black text-primary">{(notesCount.count || 0) * 5}%</p>
+                    </div>
+                    <div className="h-1.5 w-full bg-background/50 rounded-full overflow-hidden">
+                       <div className="h-full bg-blue-500 transition-all duration-1000" style={{ width: `${Math.min((notesCount.count || 0) * 5, 100)}%` }} />
+                    </div>
+                 </div>
+                 <div className="space-y-3">
+                    <div className="flex justify-between items-end">
+                       <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Video Intake</p>
+                       <p className="text-xs font-black text-primary">{(ytCount.count || 0) * 10}%</p>
+                    </div>
+                    <div className="h-1.5 w-full bg-background/50 rounded-full overflow-hidden">
+                       <div className="h-full bg-red-500 transition-all duration-1000" style={{ width: `${Math.min((ytCount.count || 0) * 10, 100)}%` }} />
+                    </div>
+                 </div>
+                 <div className="pt-4 space-y-3">
+                    <div className="p-4 rounded-2xl bg-primary/5 border border-primary/20 space-y-1">
+                       <p className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground">System Status</p>
+                       <p className="text-sm font-bold text-foreground">Optimal Performance</p>
+                    </div>
+                 </div>
+              </div>
+           </Card>
+        </div>
+      </div>
+
+      <div className="space-y-6">
+        <div className="flex items-center justify-between border-b border-border/10 pb-4">
+           <h3 className="text-sm font-bold uppercase tracking-widest flex items-center gap-2">
+              <Clock className="h-4 w-4 text-primary" />
+              Latest Captured Insights
+           </h3>
+           <Link href="/dashboard/notes" className="text-[10px] font-bold uppercase tracking-widest text-primary hover:underline">View Ledger</Link>
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {recentNotes.data?.length ? (
+            recentNotes.data.map((note) => (
+              <Link key={note.id} href={`/dashboard/notes/${note.id}`} className="group p-6 bg-card/20 border border-border/50 hover:border-primary/20 transition-all rounded-3xl">
+                <div className="space-y-4">
+                  <div className="flex justify-between items-start gap-4">
+                    <h4 className="font-bold text-base tracking-tight group-hover:text-primary transition-colors line-clamp-1">{note.title || "New Note"}</h4>
+                    <ArrowRight className="h-4 w-4 text-muted group-hover:text-primary group-hover:translate-x-1 transition-all shrink-0" />
+                  </div>
+                  <p className="text-xs text-muted-foreground line-clamp-2 font-medium leading-relaxed">{note.content?.replace(/<[^>]*>/g, '').substring(0, 120)}...</p>
                 </div>
-                <div className="flex justify-between text-[9px] font-bold text-muted-foreground uppercase tracking-widest">
-                   <span>Initial Phase</span>
-                   <span>Massive Saturation</span>
-                </div>
-             </div>
-             <div className="grid grid-cols-2 gap-6 relative z-10">
-                <div className="space-y-1">
-                   <p className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground">Market Readiness</p>
-                   <p className="text-xl font-black italic">{(jobsCount.count || 0) > 0 ? "OPTIMAL" : "MINIMAL"}</p>
-                </div>
-                <div className="space-y-1">
-                   <p className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground">Synthesis Rate</p>
-                   <p className="text-xl font-black italic">{(ytCount.count || 0) > 5 ? "ELEVATED" : "STABLE"}</p>
-                </div>
-             </div>
-          </div>
+              </Link>
+            ))
+          ) : (
+            <div className="col-span-full py-10 text-center border border-dashed border-border/20 rounded-3xl">
+              <p className="text-xs text-muted font-bold uppercase tracking-widest">Your insight ledger is currently empty</p>
+            </div>
+          )}
         </div>
       </div>
     </div>
