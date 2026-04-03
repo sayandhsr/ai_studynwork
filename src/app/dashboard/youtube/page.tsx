@@ -1,6 +1,5 @@
 import { createClient } from "@/lib/supabase/server"
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
-import { Youtube, ExternalLink, Trash, Plus, Sparkles } from "lucide-react"
+import { Youtube, ExternalLink, Plus, Sparkles, History } from "lucide-react"
 import Link from "next/link"
 import { formatDistanceToNow } from "date-fns"
 import { SummaryGenerator } from "./summary-generator"
@@ -20,85 +19,94 @@ export default async function YouTubeSummarizerPage() {
   }
 
   return (
-    <div className="space-y-12 font-serif selection:bg-primary/20">
-      <div className="space-y-4">
-        <div className="flex items-center gap-3">
-          <div className="h-px w-8 bg-primary/40" />
-          <span className="text-[10px] font-bold tracking-[0.4em] uppercase opacity-60">Visual Scribe</span>
+    <div className="space-y-20 pb-20 font-serif selection:bg-primary/20">
+      <div className="space-y-6">
+        <div className="flex items-center gap-4">
+          <div className="h-px w-10 bg-primary/30" />
+          <span className="text-[10px] font-bold tracking-[0.5em] uppercase text-muted">Aural Intelligence</span>
         </div>
-        <h1 className="text-4xl md:text-5xl font-heading tracking-tight italic">AI YouTube Summarizer</h1>
-        <p className="text-foreground/60 text-lg font-light max-w-2xl italic leading-relaxed">
-          "Extract the essence of any lecture. Every video is a story waiting to be distilled into wisdom."
+        <h1 className="text-5xl md:text-6xl font-heading tracking-tight italic text-foreground leading-tight">Video Synthesis Vault</h1>
+        <p className="text-muted text-xl font-light max-w-3xl italic leading-relaxed">
+          "Distill the relative truth from any lecture. Every sequence is a narrative waiting to be decoded into lasting wisdom."
         </p>
       </div>
 
       {/* Generator Component */}
-      <div className="relative">
-        <div className="absolute -inset-4 bg-primary/5 blur-3xl rounded-full pointer-events-none" />
+      <div className="relative group">
+        <div className="absolute -inset-10 bg-primary/5 blur-[120px] rounded-full pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity duration-1000" />
         <SummaryGenerator />
       </div>
 
-      <div className="space-y-8 pt-12 border-t border-border/30">
-        <div className="flex items-center justify-between">
-          <h2 className="text-sm font-bold tracking-[0.4em] uppercase opacity-50 flex items-center gap-4">
-            <Youtube className="h-4 w-4 text-primary" />
-            Your Archive
+      <div className="space-y-12">
+        <div className="flex items-center justify-between border-b border-border/10 pb-6">
+          <h2 className="text-[10px] font-bold tracking-[0.5em] uppercase text-muted flex items-center gap-4">
+            <Youtube className="h-4 w-4 text-primary/60" />
+            Synthesis Ledger
           </h2>
         </div>
 
         {summaries && summaries.length > 0 ? (
-          <div className="grid gap-8 sm:grid-cols-2 lg:grid-cols-2 pb-20">
+          <div className="grid gap-10 sm:grid-cols-2 lg:grid-cols-2 pb-20">
             {summaries.map((summary) => (
-              <Card key={summary.id} className="flex flex-col rounded-none border-border/40 bg-card overflow-hidden shadow-sm hover:shadow-xl transition-all duration-500 group">
-                <CardHeader className="pb-4 border-b border-border/20 bg-muted/30">
+              <div key={summary.id} className="glass-card p-1 group flex flex-col h-full hover:translate-y-[-4px] transition-all duration-500">
+                <div className="p-10 flex flex-col h-full space-y-8">
                   <div className="flex justify-between items-start">
-                    <div className="space-y-2 truncate pr-4 text-left w-full">
+                    <div className="space-y-3 truncate pr-4 text-left w-full">
                       <a 
                         href={summary.video_url} 
                         target="_blank" 
                         rel="noreferrer"
-                        className="text-xs font-bold tracking-widest hover:text-primary transition-colors flex items-center gap-2 truncate opacity-70 group-hover:opacity-100"
+                        className="text-[10px] font-bold tracking-[0.3em] text-primary/60 hover:text-primary transition-all flex items-center gap-3 uppercase group-hover:translate-x-1"
                       >
-                         VIDEO RESOURCE
-                         <ExternalLink className="h-3 w-3 inline" />
+                         Access Resource
+                         <ExternalLink className="h-3 w-3" />
                       </a>
-                      <CardDescription className="text-[10px] font-bold tracking-[0.2em] uppercase opacity-50 flex items-center gap-2">
-                        {formatDistanceToNow(new Date(summary.created_at), { addSuffix: true })}
+                      <div className="flex items-center gap-3 text-[9px] font-bold tracking-[0.2em] uppercase text-muted/30">
+                        <span className="flex items-center gap-1.5">
+                           <History className="h-3 w-3 text-muted/40" />
+                           {formatDistanceToNow(new Date(summary.created_at), { addSuffix: true })}
+                        </span>
                         {summary.mode_used && (
                           <>
-                            <span className="opacity-20">|</span>
-                            <span className="text-primary/60">
-                              Source: {
-                                summary.mode_used === "Transcript (Auto)" ? "Transcript" :
-                                summary.mode_used === "Safety Fallback" ? "Safety" :
-                                summary.mode_used
-                              }
+                            <span className="opacity-10">•</span>
+                            <span className="text-primary/40 italic">
+                               {summary.mode_used}
                             </span>
                           </>
                         )}
-                      </CardDescription>
+                      </div>
                     </div>
                   </div>
-                </CardHeader>
-                <CardContent className="flex-1 pt-8 px-8 text-base leading-relaxed font-light italic text-foreground/80 space-y-6">
-                  <div className="whitespace-pre-wrap first-letter:text-4xl first-letter:font-heading first-letter:text-primary first-letter:mr-1 first-letter:float-left">{summary.summary}</div>
                   
-                  <div className="pt-8 flex gap-4 justify-end border-t border-border/10">
-                     <Button variant="ghost" size="sm" asChild className="text-[10px] font-bold uppercase tracking-widest hover:bg-primary/10 rounded-none">
-                       <Link href={`/dashboard/notes/new?title=YouTube Summary&content=${encodeURIComponent(summary.summary)}`}>
-                         <Plus className="h-4 w-4 mr-2" />
-                         Transcribe to Note
-                       </Link>
-                     </Button>
+                  <div className="flex-1 space-y-4">
+                    <p className="text-lg leading-relaxed font-light italic text-muted/80 line-clamp-6 overflow-hidden first-letter:text-5xl first-letter:font-heading first-letter:text-primary/60 first-letter:mr-3 first-letter:float-left">
+                      {summary.summary.split('\n').find(l => !l.toLowerCase().includes('title:'))?.replace('Summary:', '').trim() || "A fragment of visual wisdom."}
+                    </p>
                   </div>
-                </CardContent>
-              </Card>
+                  
+                  <div className="pt-8 flex gap-4 justify-between items-center border-t border-border/5">
+                      <div className="flex gap-1.5">
+                         <div className="h-1 w-6 bg-primary/20" />
+                         <div className="h-1 w-3 bg-primary/10" />
+                      </div>
+                      <Button variant="ghost" size="sm" asChild className="text-[9px] font-bold uppercase tracking-[0.3em] hover:text-primary hover:bg-primary/5 rounded-none transition-all">
+                        <Link href={`/dashboard/notes/new?title=Synthesis Reflection&content=${encodeURIComponent(summary.summary)}`}>
+                          <Sparkles className="h-3.5 w-3.5 mr-2" />
+                          Commit to Archive
+                        </Link>
+                      </Button>
+                  </div>
+                </div>
+              </div>
             ))}
           </div>
         ) : (
-          <div className="flex flex-col items-center justify-center p-20 bg-muted/10 border border-dashed border-border/40 text-center space-y-4">
-            <Sparkles className="w-10 h-10 opacity-20" />
-            <p className="text-sm font-bold tracking-widest uppercase opacity-40 italic">The archive is empty.</p>
+          <div className="flex flex-col items-center justify-center p-32 bg-[#0B0F14]/30 border border-dashed border-border/10 text-center space-y-8 animate-in fade-in zoom-in duration-1000">
+            <div className="relative">
+              <Youtube className="w-16 h-16 text-primary/5" />
+              <Sparkles className="h-8 w-8 text-primary/20 absolute -top-4 -right-4 animate-pulse" />
+            </div>
+            <p className="text-[10px] font-bold tracking-[0.5em] uppercase text-muted/30 italic">No distilled wisdom found in the vault.</p>
           </div>
         )}
       </div>

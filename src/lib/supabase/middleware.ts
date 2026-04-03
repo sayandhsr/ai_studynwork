@@ -23,7 +23,6 @@ export async function updateSession(request: NextRequest) {
     request,
   });
 
-  console.log(">>> [MIDDLEWARE] SUPABASE URL:", getSupabaseUrl());
   const supabase = createServerClient(
     getSupabaseUrl(),
     getSupabaseAnonKey(),
@@ -45,61 +44,27 @@ export async function updateSession(request: NextRequest) {
     }
   );
 
-  // IMPORTANT: Avoid writing any logic between createServerClient and
-  // supabase.auth.getUser(). A simple mistake could make it very hard to debug
-  // issues with users being randomly logged out.
-  let user = null;
-  const skipAuthCheck = request.cookies.get('supabase-auth-skip')?.value === 'true';
+  // Standard user check - No timeout hacks that cause redirect loops
+  const { data: { user } } = await supabase.auth.getUser();
 
-  if (!skipAuthCheck) {
-    try {
-      const { data: { user: foundUser } } = await Promise.race([
-        supabase.auth.getUser(),
-        new Promise((_, reject) => setTimeout(() => reject(new Error('Auth timeout')), 1500))
-      ]) as any;
-      user = foundUser;
-    } catch (err: any) {
-      console.error(">>> [MIDDLEWARE] AUTH TIMEOUT/FAIL, SETTING SKIP COOKIE");
-      // If it times out, set a cookie to skip check for 5 mins to speed up the site
-      supabaseResponse.cookies.set('supabase-auth-skip', 'true', { maxAge: 300, path: '/' });
-    }
-  }
+  // Array of public routes
+  const publicRoutes = ["/", "/auth/callback"];
+  const isPublicRoute = publicRoutes.includes(request.nextUrl.pathname);
+  const isApiRoute = request.nextUrl.pathname.startsWith('/api/');
 
-  // Array of public routes that don't require authentication
-  const publicRoutes = ["/", "/auth/callback", "/dashboard/youtube"];
-
-  // If there's no user and the route is not public, handle unauthenticated access
-  if (
-    !user &&
-    !publicRoutes.includes(request.nextUrl.pathname)
-  ) {
-    if (request.nextUrl.pathname.startsWith('/api/')) {
-        return NextResponse.json({ error: 'Auth required' }, { status: 401 })
-    }
+  // If no user and not public -> Redirect to Landing
+  if (!user && !isPublicRoute && !isApiRoute) {
     const url = request.nextUrl.clone();
     url.pathname = "/";
     return NextResponse.redirect(url);
   }
 
-  // If user is logged in and trying to access root page, redirect to dashboard
+  // If user is logged in and trying to access landing -> Redirect to Dashboard
   if (user && request.nextUrl.pathname === "/") {
     const url = request.nextUrl.clone();
     url.pathname = "/dashboard";
     return NextResponse.redirect(url);
   }
-
-  // IMPORTANT: You *must* return the supabaseResponse object as it is.
-  // If you're creating a new response object with NextResponse.next() make sure to:
-  // 1. Pass the request in it, like so:
-  //    const myNewResponse = NextResponse.next({ request })
-  // 2. Copy over the cookies, like so:
-  //    myNewResponse.cookies.setAll(supabaseResponse.cookies.getAll())
-  // 3. Change the myNewResponse object to fit your needs, but avoid changing
-  //    the cookies!
-  // 4. Finally:
-  //    return myNewResponse
-  // If this is not done, you may be causing the browser and server to go out
-  // of sync and terminate the user's session prematurely!
 
   return supabaseResponse;
 }

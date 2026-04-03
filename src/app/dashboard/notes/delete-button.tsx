@@ -3,7 +3,8 @@
 import { useState } from "react"
 import { useRouter } from "next/navigation"
 import { createClient } from "@/lib/supabase/client"
-import { Trash } from "lucide-react"
+import { Trash, Loader2 } from "lucide-react"
+import { DropdownMenuItem } from "@/components/ui/dropdown-menu"
 
 export function DeleteNoteButton({ id }: { id: string }) {
   const router = useRouter()
@@ -21,15 +22,16 @@ export function DeleteNoteButton({ id }: { id: string }) {
   }
 
   return (
-    <div
+    <DropdownMenuItem
       onClick={(e) => {
         e.preventDefault()
         deleteNote()
       }}
-      className="relative flex cursor-default select-none items-center rounded-sm px-2 py-1.5 text-sm outline-none transition-colors focus:bg-accent focus:text-accent-foreground data-[disabled]:pointer-events-none data-[disabled]:opacity-50 text-destructive hover:bg-destructive/10 cursor-pointer"
+      disabled={loading}
+      className="h-10 italic font-light hover:bg-destructive/10 text-destructive rounded-none cursor-pointer flex items-center gap-3 transition-colors"
     >
-      <Trash className="mr-2 h-4 w-4" />
-      <span>{loading ? "Deleting..." : "Delete Note"}</span>
-    </div>
+      {loading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Trash className="h-3.5 w-3.5" />}
+      <span>{loading ? "Vaporizing..." : "Erase Fragment"}</span>
+    </DropdownMenuItem>
   )
 }

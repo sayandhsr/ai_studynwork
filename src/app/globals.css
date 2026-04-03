@@ -1,6 +1,5 @@
 @import "tailwindcss";
 @import "tw-animate-css";
-@import "shadcn/tailwind.css";
 
 @custom-variant dark (&:is(.dark *));
 
@@ -48,84 +47,55 @@
 }
 
 :root {
-  /* LUXURY DEFAULT (Gold & Black) */
-  --background: #000000;
-  --foreground: #F5F1EB;
+  /* LUXURY DEFAULT (Obsidian & Gold) */
+  --background: #050505;
+  --foreground: #F1E9D2;
   --card: #0A0A0A;
-  --card-foreground: #F5F1EB;
+  --card-foreground: #F1E9D2;
   --popover: #0A0A0A;
-  --popover-foreground: #F5F1EB;
-  --primary: #C5A059;
+  --popover-foreground: #F1E9D2;
+  --primary: #D4AF37;
   --primary-foreground: #000000;
-  --secondary: #1A1A1A;
-  --secondary-foreground: #C5A059;
-  --muted: #1A1A1A;
-  --muted-foreground: #8B7E6F;
-  --accent: #C5A059;
-  --accent-foreground: #000000;
+  --secondary: #111111;
+  --secondary-foreground: #D4AF37;
+  --muted: #111111;
+  --muted-foreground: #706856;
+  --accent: #1A1A1A;
+  --accent-foreground: #D4AF37;
   --destructive: #7f1d1d;
-  --destructive-foreground: #F5F1EB;
-  --border: #2D2A26;
-  --input: #1A1A1A;
-  --ring: #C5A059;
+  --destructive-foreground: #F1E9D2;
+  --border: #1F1F1F;
+  --input: #1F1F1F;
+  --ring: #D4AF37;
   --radius: 0rem;
   --sidebar: #050505;
-  --sidebar-foreground: #F5F1EB;
-  --sidebar-primary: #C5A059;
-  --sidebar-primary-foreground: #000000;
-  --sidebar-accent: #1A1A1A;
-  --sidebar-accent-foreground: #C5A059;
-  --sidebar-border: #2D2A26;
-  --sidebar-ring: #C5A059;
+  --sidebar-foreground: #F1E9D2;
 }
 
 .light {
-  /* REFINED CREAMY LIGHT (Premium Sanctuary) */
-  --background: #FDFBF7;
-  --foreground: #2D2A26;
+  /* REFINED PAPER LIGHT (Premium Sanctuary) */
+  --background: #FAFAFA;
+  --foreground: #1A1A1A;
   --card: #FFFFFF;
-  --card-foreground: #2D2A26;
+  --card-foreground: #1A1A1A;
   --popover: #FFFFFF;
-  --popover-foreground: #2D2A26;
-  --primary: #C5A059;
+  --popover-foreground: #1A1A1A;
+  --primary: #1A1A1A;
   --primary-foreground: #FFFFFF;
-  --secondary: #F5F1EB;
-  --secondary-foreground: #2D2A26;
-  --muted: #F5F1EB;
-  --muted-foreground: #7C7267;
-  --accent: #F5F1EB;
-  --accent-foreground: #C5A059;
-  --destructive: #991b1b;
-  --destructive-foreground: #FDFBF7;
-  --border: #E8E2D9;
-  --input: #E8E2D9;
-  --ring: #C5A059;
+  --secondary: #F0F0F0;
+  --secondary-foreground: #1A1A1A;
+  --muted: #F0F0F0;
+  --muted-foreground: #737373;
+  --accent: #F5F5F5;
+  --accent-foreground: #000000;
+  --destructive: #dc2626;
+  --destructive-foreground: #FFFFFF;
+  --border: #E5E5E5;
+  --input: #E5E5E5;
+  --ring: #1A1A1A;
   --radius: 0rem;
-  --sidebar: #FDFBF7;
-  --sidebar-foreground: #2D2A26;
-}
-
-.dark {
-  /* STANDARD DARK (Modern Zinc) */
-  --background: #09090b;
-  --foreground: #fafafa;
-  --card: #09090b;
-  --card-foreground: #fafafa;
-  --popover: #09090b;
-  --popover-foreground: #fafafa;
-  --primary: #fafafa;
-  --primary-foreground: #18181b;
-  --secondary: #27272a;
-  --secondary-foreground: #fafafa;
-  --muted: #27272a;
-  --muted-foreground: #a1a1aa;
-  --accent: #27272a;
-  --accent-foreground: #fafafa;
-  --destructive: #7f1d1d;
-  --destructive-foreground: #fafafa;
-  --border: #27272a;
-  --input: #27272a;
-  --ring: #d4d4d8;
+  --sidebar: #F9F9F9;
+  --sidebar-foreground: #1A1A1A;
 }
 
 @layer base {
@@ -133,59 +103,28 @@
     @apply border-border outline-ring/50;
   }
   body {
-    @apply bg-background text-foreground antialiased;
-  }
-  html {
-    @apply font-sans;
-    font-size: 16px;
+    @apply bg-background text-foreground antialiased selection:bg-primary/20 selection:text-primary;
   }
 }
 
-/* Global Font Utilities - Luxury Theme */
-.font-heading { 
-  font-family: var(--font-heading), serif !important; 
-}
-.font-serif { 
-  font-family: var(--font-serif), serif !important; 
-}
-.font-inter { font-family: var(--font-inter), sans-serif !important; }
-.font-roboto { font-family: var(--font-roboto), sans-serif !important; }
-.font-lora { font-family: var(--font-lora), serif !important; }
-.font-baskerville { font-family: var(--font-baskerville), serif !important; }
-.font-jetbrains { font-family: var(--font-jetbrains), monospace !important; }
-
-/* Premium Typography Refinements */
-h1, h2, h3, h4, h5, h6 {
-  @apply tracking-tight font-bold;
-}
-
-/* Glassmorphism Utilities */
-.glass {
-  @apply bg-background/50 backdrop-blur-xl border border-border/30 shadow-2xl;
-}
-
+/* Glassmorphism Utilities - Premium Paradox Feel */
 .glass-card {
-  @apply bg-card/40 backdrop-blur-md border border-border/20 shadow-xl transition-all duration-300 hover:bg-card/60 hover:border-border/40;
+  background: rgba(255, 255, 255, 0.01);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+  transition: all 0.6s cubic-bezier(0.23, 1, 0.32, 1);
 }
 
-/* Trust-building Grid Background */
-.grid-bg {
-  background-image: radial-gradient(circle at 2px 2px, rgba(255,255,255,0.05) 1px, transparent 0);
-  background-size: 24px 24px;
+.dark .glass-card {
+  background: rgba(0, 0, 0, 0.4);
+  border: 1px solid rgba(255, 255, 255, 0.03);
 }
 
-/* Special Button Glow */
-.btn-glow {
-  @apply relative overflow-hidden transition-all duration-300;
-}
-
-.btn-glow::after {
-  content: '';
-  @apply absolute inset-0 opacity-0 transition-opacity duration-300 bg-gradient-to-r from-transparent via-white/20 to-transparent;
-  transform: translateX(-100%) skewX(-15deg);
-}
-
-.btn-glow:hover::after {
-  @apply opacity-100;
-  transform: translateX(100%) skewX(-15deg);
+.glass-card:hover {
+  background: rgba(212, 175, 55, 0.02);
+  border: 1px solid rgba(212, 175, 55, 0.15);
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.4);
+  transform: translateY(-4px);
 }

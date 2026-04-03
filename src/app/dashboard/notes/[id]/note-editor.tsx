@@ -10,6 +10,8 @@ import { Card, CardContent } from "@/components/ui/card"
 import { ArrowLeft, Save, Loader2 } from "lucide-react"
 import Link from "next/link"
 
+import { TiptapEditor } from "@/components/notes/editor"
+
 interface NoteData {
   id?: string
   title: string
@@ -25,6 +27,7 @@ export function NoteEditor({ initialData }: { initialData?: NoteData | null }) {
   const [content, setContent] = useState(initialData?.content || "")
   const [isSaving, setIsSaving] = useState(false)
   const [isAutoSaving, setIsAutoSaving] = useState(false)
+  const [lastSaved, setLastSaved] = useState<Date | null>(initialData?.id ? new Date() : null)
   
   const isEditing = !!initialData?.id
 
@@ -36,15 +39,18 @@ export function NoteEditor({ initialData }: { initialData?: NoteData | null }) {
       if (title !== initialData?.title || content !== initialData?.content) {
         setIsAutoSaving(true)
         
-        await supabase
+        const { error } = await supabase
           .from("notes")
-          .update({ title, content })
+          .update({ title: title || "Untitled Fragment", content })
           .eq("id", initialData.id)
           
+        if (!error) {
+          setLastSaved(new Date())
+        }
         setIsAutoSaving(false)
         router.refresh()
       }
-    }, 2000) // Auto-save after 2s of inactivity
+    }, 3000) // Auto-save after 3s of inactivity
 
     return () => clearTimeout(timer)
   }, [title, content, isEditing, initialData, supabase, router])
@@ -63,7 +69,7 @@ export function NoteEditor({ initialData }: { initialData?: NoteData | null }) {
     if (isEditing) {
       await supabase
         .from("notes")
-        .update({ title: title || "Untitled Note", content })
+        .update({ title: title || "Untitled Fragment", content })
         .eq("id", initialData.id)
         
       setIsSaving(false)
@@ -71,14 +77,13 @@ export function NoteEditor({ initialData }: { initialData?: NoteData | null }) {
     } else {
       const { data, error } = await supabase
         .from("notes")
-        .insert([{ user_id: user.id, title: title || "Untitled Note", content }])
+        .insert([{ user_id: user.id, title: title || "Untitled Fragment", content }])
         .select()
         .single()
         
       setIsSaving(false)
       if (error) {
         console.error("Save Error:", error)
-        alert("Failed to save note: " + error.message)
         return
       }
       
@@ -91,40 +96,62 @@ export function NoteEditor({ initialData }: { initialData?: NoteData | null }) {
   }
 
   return (
-    <Card className="border shadow-sm">
-      <CardContent className="p-6 space-y-4">
-        <div className="flex items-center justify-between">
-          <Button variant="ghost" size="sm" asChild className="gap-1 -ml-2 text-muted-foreground">
+    <div className="max-w-5xl mx-auto space-y-12 pb-24 font-serif">
+      <div className="flex items-center justify-between border-b border-border/10 pb-8">
+        <div className="flex items-center gap-6">
+          <Button variant="ghost" size="icon" asChild className="h-12 w-12 rounded-none hover:bg-primary/5 text-muted transition-all">
             <Link href="/dashboard/notes">
-              <ArrowLeft className="h-4 w-4" />
-              Back
+              <ArrowLeft className="h-5 w-5" />
             </Link>
           </Button>
-          <div className="flex items-center gap-2">
-            {isAutoSaving && <span className="text-xs text-muted-foreground animate-pulse">Autosaving...</span>}
-            <Button onClick={handleSave} disabled={isSaving} size="sm" className="gap-2">
-              {isSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
-              {isEditing ? "Save Changes" : "Create Note"}
-            </Button>
+          <div className="space-y-1">
+             <div className="flex items-center gap-2">
+                <div className="h-1.5 w-1.5 rounded-full bg-primary/40" />
+                <span className="text-[10px] font-bold tracking-[0.4em] uppercase text-muted">Document Registry</span>
+             </div>
+             <p className="text-xs italic text-muted/40 font-light">
+                {isEditing ? (lastSaved ? `Last preserved ${lastSaved.toLocaleTimeString()}` : "Synchronizing...") : "New fragment initialization"}
+             </p>
           </div>
         </div>
+        
+        <div className="flex items-center gap-6">
+           {isAutoSaving && (
+             <div className="flex items-center gap-2 px-4 py-2 bg-primary/5 border border-primary/10 animate-pulse">
+                <Loader2 className="h-3 w-3 text-primary/60 animate-spin" />
+                <span className="text-[9px] font-bold uppercase tracking-widest text-primary/60">Preserving...</span>
+             </div>
+           )}
+           <Button 
+             onClick={handleSave} 
+             disabled={isSaving} 
+             className="rounded-none h-14 px-10 bg-primary hover:bg-primary/90 font-bold uppercase tracking-[0.3em] text-[10px] transition-all shadow-[0_0_25px_rgba(212,175,55,0.15)] group"
+           >
+             {isSaving ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Save className="h-4 w-4 mr-2 group-hover:scale-110 transition-transform" />}
+             {isEditing ? "Archive Changes" : "Finalize Fragment"}
+           </Button>
+        </div>
+      </div>
 
-        <div className="space-y-4 pt-2">
-          <Input
-            placeholder="Note Title"
-            value={title}
-            onChange={(e) => setTitle(e.target.value)}
-            className="text-2xl font-bold border-0 px-0 focus-visible:ring-0 shadow-none rounded-none"
-          />
-          
-          <Textarea
-            placeholder="Write your note here or paste text..."
-            value={content}
-            onChange={(e) => setContent(e.target.value)}
-            className="min-h-[60vh] resize-none border-0 px-0 focus-visible:ring-0 shadow-none text-base leading-relaxed p-0"
+      <div className="space-y-10">
+        <Input
+          placeholder="A Title Worth Remembering..."
+          value={title}
+          onChange={(e) => setTitle(e.target.value)}
+          className="text-5xl md:text-6xl font-heading tracking-tight italic border-0 px-0 focus-visible:ring-0 shadow-none rounded-none bg-transparent h-auto placeholder:text-muted/10 selection:bg-primary/20"
+        />
+        
+        <div className="glass-card p-10 min-h-[700px] relative overflow-hidden">
+          <div className="absolute top-0 right-0 p-8 opacity-[0.02] pointer-events-none">
+             <Save className="w-32 h-32" />
+          </div>
+          <TiptapEditor 
+             content={content} 
+             onChange={setContent} 
+             placeholder="Begin your intellectual journey here..."
           />
         </div>
-      </CardContent>
-    </Card>
+      </div>
+    </div>
   )
 }

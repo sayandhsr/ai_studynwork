@@ -30,18 +30,7 @@ export default async function EditNotePage(props: {
   }
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight">
-            {note ? "Edit Note" : "Create Note"}
-          </h1>
-          <p className="text-muted-foreground">
-            {note ? "Update your ideas and thoughts." : "Start writing or paste external content."}
-          </p>
-        </div>
-      </div>
-
+    <div className="pt-8">
       <NoteEditor initialData={note} />
     </div>
   )

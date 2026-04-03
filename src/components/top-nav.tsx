@@ -40,13 +40,13 @@ export function TopNav({ user }: TopNavProps) {
     : user?.email?.substring(0, 2).toUpperCase() || "U"
 
   return (
-    <header className="sticky top-0 z-40 flex h-20 shrink-0 items-center justify-between gap-2 border-b border-border/20 bg-background/80 backdrop-blur-xl px-6">
+    <header className="sticky top-0 z-40 flex h-20 shrink-0 items-center justify-between gap-2 border-b border-border/10 bg-[#0B0F14]/80 backdrop-blur-xl px-6">
       <div className="flex items-center gap-4">
         <SidebarTrigger className="md:hidden" />
         <div className="flex flex-col md:flex-row md:items-center gap-2 font-serif">
-          <span className="hidden md:inline-block text-[10px] font-bold tracking-[0.4em] uppercase opacity-40">Digital Workspace</span>
-          <div className="hidden md:block h-1 w-1 rounded-full bg-primary/40 mx-2" />
-          <span className="font-heading italic text-lg tracking-tight text-foreground/80">Spurce Sanctuary</span>
+          <span className="hidden md:inline-block text-[10px] font-bold tracking-[0.4em] uppercase text-muted/40">Technical Workspace</span>
+          <div className="hidden md:block h-1 w-1 rounded-full bg-primary/20 mx-2" />
+          <span className="font-heading italic text-lg tracking-tight text-foreground/90">Sanctuary Alpha</span>
         </div>
       </div>
       

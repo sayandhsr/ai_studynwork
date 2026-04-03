@@ -7,12 +7,13 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { Card, CardContent } from "@/components/ui/card"
-import { Printer, Save, Loader2, LayoutTemplate, Type, Sliders, Type as FontIcon, AlignLeft, Sparkles } from "lucide-react"
+import { Printer, Save, Loader2, LayoutTemplate, Type, Sliders, Type as FontIcon, AlignLeft, Sparkles, Trash, Plus, Minus, CheckCircle2 } from "lucide-react"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Label } from "@/components/ui/label"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Separator } from "@/components/ui/separator"
 import { cn } from "@/lib/utils"
+import { motion, AnimatePresence } from "framer-motion"
 
 // Types for Resume Data
 interface Experience {
@@ -52,6 +53,7 @@ const TEMPLATES = [
 
 export function ResumeBuilder() {
   const supabase = createClient()
+  const resumeRef = useRef<HTMLDivElement>(null)
   
   const [data, setData] = useState<ResumeData>({
     personalInfo: {
@@ -78,7 +80,7 @@ export function ResumeBuilder() {
   const [saving, setSaving] = useState(false)
   const [optimizing, setOptimizing] = useState(false)
   const [targetRole, setTargetRole] = useState("")
-  const resumeRef = useRef<HTMLDivElement>(null)
+  const [savedSuccess, setSavedSuccess] = useState(false)
 
   const handlePrint = useReactToPrint({
     contentRef: resumeRef,
@@ -96,7 +98,8 @@ export function ResumeBuilder() {
         resume_data: data,
         template_used: activeTemplate
       }])
-      
+      setSavedSuccess(true)
+      setTimeout(() => setSavedSuccess(false), 3000)
     } catch (err) {
       console.error("Failed to save resume", err)
     } finally {
@@ -129,6 +132,38 @@ export function ResumeBuilder() {
       ...prev,
       personalInfo: { ...prev.personalInfo, [field]: value }
     }))
+  }
+
+  const updateExperience = (id: string, field: keyof Experience, value: string) => {
+    setData(prev => ({
+      ...prev,
+      experience: prev.experience.map(exp => exp.id === id ? { ...exp, [field]: value } : exp)
+    }))
+  }
+
+  const addExperience = () => {
+    const newExp: Experience = { id: Date.now().toString(), company: "", role: "", period: "", description: "" }
+    setData(prev => ({ ...prev, experience: [...prev.experience, newExp] }))
+  }
+
+  const removeExperience = (id: string) => {
+    setData(prev => ({ ...prev, experience: prev.experience.filter(exp => exp.id !== id) }))
+  }
+
+  const updateEducation = (id: string, field: keyof Education, value: string) => {
+    setData(prev => ({
+      ...prev,
+      education: prev.education.map(edu => edu.id === id ? { ...edu, [field]: value } : edu)
+    }))
+  }
+
+  const addEducation = () => {
+    const newEdu: Education = { id: Date.now().toString(), school: "", degree: "", year: "" }
+    setData(prev => ({ ...prev, education: [...prev.education, newEdu] }))
+  }
+
+  const removeEducation = (id: string) => {
+    setData(prev => ({ ...prev, education: prev.education.filter(edu => edu.id !== id) }))
   }
 
   // --- TEMPLATE ENGINE ---
@@ -222,252 +257,376 @@ export function ResumeBuilder() {
   )
 
   return (
-    <div className="flex flex-col lg:flex-row gap-12 items-start font-serif selection:bg-primary/20 pb-20">
+    <div className="flex flex-col lg:flex-row gap-16 items-start font-serif selection:bg-primary/20 pb-20">
       {/* Form Controls */}
-      <div className="w-full lg:w-[450px] shrink-0 space-y-8">
-          <Tabs defaultValue="template" className="w-full">
-            <TabsList className="w-full h-12 rounded-none bg-card/80 border-b border-border/30 mb-6">
-              <TabsTrigger value="template" className="flex-1 rounded-none data-[state=active]:bg-primary/10 data-[state=active]:text-primary">
-                <LayoutTemplate className="w-3 h-3 mr-2" />
-                Theme
-              </TabsTrigger>
-              <TabsTrigger value="typography" className="flex-1 rounded-none data-[state=active]:bg-primary/10 data-[state=active]:text-primary">
-                <FontIcon className="w-3 h-3 mr-2" />
-                Type
-              </TabsTrigger>
-              <TabsTrigger value="ats" className="flex-1 rounded-none data-[state=active]:bg-primary/10 data-[state=active]:text-primary">
-                <Sparkles className="w-3 h-3 mr-2" />
+      <div className="w-full lg:w-[480px] shrink-0 space-y-10">
+          <Tabs defaultValue="identity" className="w-full">
+            <TabsList className="w-full h-14 bg-[#0B0F14] border border-border/10 p-1 rounded-none mb-10 overflow-x-auto overflow-y-hidden flex-nowrap justify-start">
+              <TabsTrigger value="identity" className="flex-1 min-w-[100px] h-full rounded-none text-[9px] font-bold uppercase tracking-[0.2em] data-[state=active]:bg-primary/10 data-[state=active]:text-primary transition-all">Identity</TabsTrigger>
+              <TabsTrigger value="chronicle" className="flex-1 min-w-[100px] h-full rounded-none text-[9px] font-bold uppercase tracking-[0.2em] data-[state=active]:bg-primary/10 data-[state=active]:text-primary transition-all">Chronicle</TabsTrigger>
+              <TabsTrigger value="meta" className="flex-1 min-w-[100px] h-full rounded-none text-[9px] font-bold uppercase tracking-[0.2em] data-[state=active]:bg-primary/10 data-[state=active]:text-primary transition-all">Metadata</TabsTrigger>
+              <TabsTrigger value="ats" className="flex-1 min-w-[100px] h-full rounded-none text-[9px] font-bold uppercase tracking-[0.2em] data-[state=active]:bg-primary/10 data-[state=active]:text-primary transition-all flex items-center gap-2">
+                <Sparkles className="w-3 h-3" />
                 ATS AI
               </TabsTrigger>
             </TabsList>
 
-            <TabsContent value="template" className="space-y-4 m-0">
-              <h3 className="text-2xl font-heading italic">Curated Designs</h3>
-              <ScrollArea className="h-[140px] w-full border-border/30 border rounded-none bg-card/50 p-4">
-                <div className="grid grid-cols-2 gap-3">
-               {TEMPLATES.map((tmpl) => (
-                  <Button 
-                    key={tmpl} 
-                    variant="ghost"
-                    size="sm"
-                    className={cn(
-                      "text-[10px] font-bold uppercase tracking-widest h-10 rounded-none border transition-all",
-                      activeTemplate === tmpl ? "bg-primary text-primary-foreground border-primary shadow-lg" : "border-border/30 hover:bg-primary/5"
-                    )}
-                    onClick={() => setActiveTemplate(tmpl)}
-                  >
-                    {tmpl}
-                  </Button>
-               ))}
-                </div>
-              </ScrollArea>
-            </TabsContent>
-
-            <TabsContent value="typography" className="space-y-6 m-0 pt-2">
-              <div className="space-y-4">
-                <Label className="text-[10px] font-bold uppercase tracking-[0.3em] opacity-60">Font Family</Label>
-                <div className="grid grid-cols-1 gap-2">
-                  {[
-                    { name: 'Modern Sans (Inter)', class: 'font-inter' },
-                    { name: 'Friendly Sans (Roboto)', class: 'font-roboto' },
-                    { name: 'Elegant Serif (Lora)', class: 'font-lora' },
-                    { name: 'Classic Serif (Baskerville)', class: 'font-baskerville' },
-                    { name: 'Modern Mono (JetBrains)', class: 'font-jetbrains' }
-                  ].map((f) => (
-                    <Button
-                      key={f.class}
-                      variant="ghost"
-                      size="sm"
-                      className={cn(
-                        "justify-start text-xs h-10 rounded-none border transition-all px-4",
-                        f.class,
-                        fontFamily === f.class ? "bg-primary/10 text-primary border-primary/40" : "border-border/30 hover:bg-primary/5"
-                      )}
-                      onClick={() => setFontFamily(f.class)}
-                    >
-                      {f.name}
-                    </Button>
-                  ))}
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-6 pt-4">
-                <div className="space-y-3">
-                  <Label className="text-[10px] font-bold uppercase tracking-[0.3em] opacity-60">Text Size ({fontSize}pt)</Label>
-                  <input 
-                    type="range" min="8" max="14" step="0.5" 
-                    value={fontSize} 
-                    onChange={(e) => setFontSize(parseFloat(e.target.value))}
-                    className="w-full accent-primary h-1.5 bg-primary/20 rounded-lg appearance-none cursor-pointer"
-                  />
-                </div>
-                <div className="space-y-3">
-                  <Label className="text-[10px] font-bold uppercase tracking-[0.3em] opacity-60">Spacing ({lineHeight})</Label>
-                  <input 
-                    type="range" min="1.0" max="2.0" step="0.1" 
-                    value={lineHeight} 
-                    onChange={(e) => setLineHeight(parseFloat(e.target.value))}
-                    className="w-full accent-primary h-1.5 bg-primary/20 rounded-lg appearance-none cursor-pointer"
-                  />
-                </div>
-              </div>
-            </TabsContent>
-
-            <TabsContent value="ats" className="space-y-6 m-0 pt-2 animate-in fade-in slide-in-from-bottom-2 duration-500">
+            <TabsContent value="identity" className="space-y-8 animate-in fade-in slide-in-from-left-4 duration-500">
                <div className="space-y-6">
-                  <div className="p-6 border border-primary/20 bg-primary/5 rounded-none space-y-3">
-                    <h3 className="text-xl font-heading italic">AI ATS Power-Up</h3>
-                    <p className="text-[10px] font-bold uppercase tracking-widest opacity-40 leading-relaxed">
-                      Optimize your resume for specific job roles. Our AI will inject industry keywords and refine your experience using the STAR method.
+                  <div className="space-y-3">
+                    <Label className="text-[10px] font-bold uppercase tracking-[0.4em] text-muted">Full Name</Label>
+                    <Input 
+                      value={data.personalInfo.fullName} 
+                      onChange={(e) => updatePersonalInfo("fullName", e.target.value)} 
+                      className="h-14 rounded-none border-border/10 bg-[#0B0F14]/40 italic font-light text-lg px-6 selection:bg-primary/20"
+                    />
+                  </div>
+                  <div className="grid grid-cols-2 gap-6">
+                    <div className="space-y-3">
+                      <Label className="text-[10px] font-bold uppercase tracking-[0.4em] text-muted">Email Address</Label>
+                      <Input 
+                        value={data.personalInfo.email} 
+                        onChange={(e) => updatePersonalInfo("email", e.target.value)} 
+                        className="h-14 rounded-none border-border/10 bg-[#0B0F14]/40 italic font-light text-base px-6 selection:bg-primary/20"
+                      />
+                    </div>
+                    <div className="space-y-3">
+                      <Label className="text-[10px] font-bold uppercase tracking-[0.4em] text-muted">Contact Number</Label>
+                      <Input 
+                        value={data.personalInfo.phone} 
+                        onChange={(e) => updatePersonalInfo("phone", e.target.value)} 
+                        className="h-14 rounded-none border-border/10 bg-[#0B0F14]/40 italic font-light text-base px-6"
+                      />
+                    </div>
+                  </div>
+                  <div className="space-y-3">
+                    <Label className="text-[10px] font-bold uppercase tracking-[0.4em] text-muted">Geographical Location</Label>
+                    <Input 
+                      value={data.personalInfo.location} 
+                      onChange={(e) => updatePersonalInfo("location", e.target.value)} 
+                      className="h-14 rounded-none border-border/10 bg-[#0B0F14]/40 italic font-light text-base px-6"
+                    />
+                  </div>
+                  <div className="space-y-3">
+                    <Label className="text-[10px] font-bold uppercase tracking-[0.4em] text-muted">Professional Narrative</Label>
+                    <Textarea 
+                      value={data.personalInfo.summary} 
+                      onChange={(e) => updatePersonalInfo("summary", e.target.value)} 
+                      rows={5}
+                      className="rounded-none border-border/10 bg-[#0B0F14]/40 italic font-light text-base p-6 resize-none selection:bg-primary/20 leading-relaxed"
+                    />
+                  </div>
+               </div>
+            </TabsContent>
+
+            <TabsContent value="chronicle" className="space-y-10 animate-in fade-in slide-in-from-left-4 duration-500">
+               <div className="space-y-8">
+                  <div className="flex items-center justify-between">
+                    <h3 className="text-sm font-bold uppercase tracking-[0.3em] text-primary/60">Professional Chronicle</h3>
+                    <Button onClick={addExperience} variant="ghost" size="sm" className="h-8 rounded-none text-[10px] font-bold uppercase tracking-widest border border-primary/10 hover:bg-primary/5 px-4">
+                      Add Instance
+                    </Button>
+                  </div>
+                  <ScrollArea className="h-[500px] pr-6">
+                    <div className="space-y-10">
+                      <AnimatePresence initial={false}>
+                        {data.experience.map((exp, i) => (
+                          <motion.div 
+                            key={exp.id} 
+                            initial={{ opacity: 0, height: 0 }}
+                            animate={{ opacity: 1, height: 'auto' }}
+                            exit={{ opacity: 0, height: 0 }}
+                            className="p-8 border border-border/10 bg-[#0B0F14]/20 relative group overflow-hidden"
+                          >
+                             <Button 
+                                variant="ghost" size="icon" 
+                                onClick={() => removeExperience(exp.id)}
+                                className="absolute top-4 right-4 h-8 w-8 text-muted opacity-0 group-hover:opacity-60 hover:text-destructive flex items-center justify-center transition-all bg-background/50"
+                             >
+                               <Trash className="w-3.5 h-3.5" />
+                             </Button>
+                             <span className="text-[9px] font-bold uppercase tracking-widest opacity-20 block mb-6">Entry Sequence #{i + 1}</span>
+                             <div className="grid gap-8">
+                                <Input 
+                                  placeholder="Corporate Entity"
+                                  value={exp.company}
+                                  onChange={(e) => updateExperience(exp.id, "company", e.target.value)}
+                                  className="h-12 border-0 border-b border-border/10 rounded-none bg-transparent italic font-light text-base px-0 focus-visible:ring-0 focus-visible:border-primary/40 transition-colors"
+                                />
+                                <Input 
+                                  placeholder="Designatory Role"
+                                  value={exp.role}
+                                  onChange={(e) => updateExperience(exp.id, "role", e.target.value)}
+                                  className="h-12 border-0 border-b border-border/10 rounded-none bg-transparent italic font-light text-base px-0 font-bold focus-visible:ring-0 focus-visible:border-primary/40"
+                                />
+                                <Input 
+                                  placeholder="Temporal Range (e.g. 2022 - Present)"
+                                  value={exp.period}
+                                  onChange={(e) => updateExperience(exp.id, "period", e.target.value)}
+                                  className="h-12 border-0 border-b border-border/10 rounded-none bg-transparent italic font-light text-sm px-0 opacity-60 focus-visible:ring-0 focus-visible:border-primary/40"
+                                />
+                                <Textarea 
+                                  placeholder="Articulate your impact using the STAR method..."
+                                  value={exp.description}
+                                  onChange={(e) => updateExperience(exp.id, "description", e.target.value)}
+                                  rows={4}
+                                  className="border-0 border-b border-border/10 rounded-none bg-transparent italic font-light text-base px-0 resize-none leading-relaxed focus-visible:ring-0 focus-visible:border-primary/40"
+                                />
+                             </div>
+                          </motion.div>
+                        ))}
+                      </AnimatePresence>
+                    </div>
+                  </ScrollArea>
+               </div>
+
+               <div className="space-y-8 pt-10 border-t border-border/5">
+                  <div className="flex items-center justify-between">
+                    <h3 className="text-sm font-bold uppercase tracking-[0.3em] text-primary/60">Foundational Knowledge</h3>
+                    <Button onClick={addEducation} variant="ghost" size="sm" className="h-8 rounded-none text-[10px] font-bold uppercase tracking-widest border border-primary/10 hover:bg-primary/5 px-4">
+                      Add Degree
+                    </Button>
+                  </div>
+                  <div className="space-y-8">
+                     <AnimatePresence initial={false}>
+                        {data.education.map((edu, i) => (
+                          <motion.div 
+                            key={edu.id}
+                            initial={{ opacity: 0, scale: 0.98 }}
+                            animate={{ opacity: 1, scale: 1 }}
+                            exit={{ opacity: 0, scale: 0.98 }}
+                            className="relative group p-8 border border-border/10 bg-[#0B0F14]/10"
+                          >
+                             <Button 
+                                variant="ghost" size="icon" 
+                                onClick={() => removeEducation(edu.id)}
+                                className="absolute top-2 right-2 h-8 w-8 text-muted opacity-0 group-hover:opacity-60 hover:text-destructive transition-all"
+                             >
+                               <Trash className="w-3.5 h-3.5" />
+                             </Button>
+                             <div className="grid gap-6">
+                                <Input 
+                                  placeholder="Academic Institution"
+                                  value={edu.school}
+                                  onChange={(e) => updateEducation(edu.id, "school", e.target.value)}
+                                  className="h-10 border-0 border-b border-border/10 rounded-none bg-transparent italic font-light text-base px-0 focus-visible:ring-0 focus-visible:border-primary/40"
+                                />
+                                <div className="flex justify-between gap-10">
+                                  <Input 
+                                    placeholder="Degree Conferred"
+                                    value={edu.degree}
+                                    onChange={(e) => updateEducation(edu.id, "degree", e.target.value)}
+                                    className="flex-1 h-10 border-0 border-b border-border/10 rounded-none bg-transparent italic font-light text-base px-0 font-bold focus-visible:ring-0 focus-visible:border-primary/40"
+                                  />
+                                  <Input 
+                                    placeholder="Year"
+                                    value={edu.year}
+                                    onChange={(e) => updateEducation(edu.id, "year", e.target.value)}
+                                    className="w-24 h-10 border-0 border-b border-border/10 rounded-none bg-transparent italic font-light text-sm px-0 opacity-60 focus-visible:ring-0 focus-visible:border-primary/40"
+                                  />
+                                </div>
+                             </div>
+                          </motion.div>
+                        ))}
+                     </AnimatePresence>
+                  </div>
+               </div>
+            </TabsContent>
+
+            <TabsContent value="meta" className="space-y-12 animate-in fade-in slide-in-from-left-4 duration-500">
+               <div className="space-y-8">
+                  <div className="space-y-6">
+                    <Label className="text-[10px] font-bold uppercase tracking-[0.4em] text-muted">Architectural Template</Label>
+                    <ScrollArea className="h-[200px] border border-border/10 bg-[#0B0F14]/40 p-4">
+                       <div className="grid grid-cols-2 gap-3">
+                          {TEMPLATES.map((tmpl) => (
+                            <Button 
+                              key={tmpl} 
+                              variant="ghost"
+                              onClick={() => setActiveTemplate(tmpl)}
+                              className={cn(
+                                "h-11 rounded-none text-[9px] font-bold uppercase tracking-widest border transition-all",
+                                activeTemplate === tmpl ? "bg-primary text-primary-foreground border-primary" : "border-border/5 hover:bg-primary/5 text-muted/60"
+                              )}
+                            >
+                              {tmpl}
+                            </Button>
+                          ))}
+                       </div>
+                    </ScrollArea>
+                  </div>
+
+                  <div className="space-y-6">
+                    <Label className="text-[10px] font-bold uppercase tracking-[0.4em] text-muted">Typography Selection</Label>
+                    <div className="grid gap-3">
+                       {[
+                         { name: 'Inter (Sanctuary Sans)', class: 'font-inter' },
+                         { name: 'Baskerville (Elite Serif)', class: 'font-baskerville' },
+                         { name: 'Lora (Sophisticated Serif)', class: 'font-lora' },
+                         { name: 'Roboto (Functional Sans)', class: 'font-roboto' },
+                         { name: 'JetBrains (Structural Mono)', class: 'font-jetbrains' }
+                       ].map((f) => (
+                         <Button 
+                           key={f.class} 
+                           variant="ghost"
+                           onClick={() => setFontFamily(f.class)}
+                           className={cn(
+                             "h-14 justify-start px-8 rounded-none text-xs border transition-all",
+                             f.class,
+                             fontFamily === f.class ? "bg-primary/10 border-primary/20 text-primary" : "border-border/5 hover:bg-primary/5 text-muted/60"
+                           )}
+                         >
+                           {f.name}
+                         </Button>
+                       ))}
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-10 pt-6">
+                     <div className="space-y-6">
+                        <div className="flex justify-between items-center">
+                          <Label className="text-[10px] font-bold uppercase tracking-[0.3em] opacity-40">Optical Size</Label>
+                          <span className="text-[10px] font-mono text-primary/60">{fontSize}pt</span>
+                        </div>
+                        <input type="range" min="8" max="14" step="0.5" value={fontSize} onChange={(e) => setFontSize(parseFloat(e.target.value))} className="w-full accent-primary h-1 bg-border/20 appearance-none cursor-pointer" />
+                     </div>
+                     <div className="space-y-6">
+                        <div className="flex justify-between items-center">
+                          <Label className="text-[10px] font-bold uppercase tracking-[0.3em] opacity-40">Line rhythm</Label>
+                          <span className="text-[10px] font-mono text-primary/60">{lineHeight}x</span>
+                        </div>
+                        <input type="range" min="1.0" max="2.0" step="0.1" value={lineHeight} onChange={(e) => setLineHeight(parseFloat(e.target.value))} className="w-full accent-primary h-1 bg-border/20 appearance-none cursor-pointer" />
+                     </div>
+                  </div>
+
+                  <div className="space-y-6 pt-10 border-t border-border/5">
+                    <Label className="text-[10px] font-bold uppercase tracking-[0.4em] text-muted">Ammunition Arsenal (Skills)</Label>
+                    <Textarea 
+                      value={data.skills} 
+                      onChange={(e) => setData(prev => ({...prev, skills: e.target.value}))} 
+                      rows={4}
+                      placeholder="e.g. Artificial Intelligence, Neural Architectures, Strategic Synthesis..."
+                      className="rounded-none border-border/10 bg-[#0B0F14]/40 italic font-light text-base p-6 resize-none leading-relaxed selection:bg-primary/20"
+                    />
+                  </div>
+               </div>
+            </TabsContent>
+
+            <TabsContent value="ats" className="space-y-10 animate-in fade-in slide-in-from-left-4 duration-500">
+               <div className="space-y-12">
+                  <div className="p-12 border border-primary/20 bg-primary/5 space-y-6 relative overflow-hidden group">
+                    <div className="absolute top-0 right-0 p-6 opacity-5 rotate-12 group-hover:rotate-0 transition-transform duration-1000">
+                       <Sparkles className="w-32 h-32" />
+                    </div>
+                    <h3 className="text-4xl font-heading italic">Sanctuary ATS Synthesis</h3>
+                    <p className="text-[12px] font-bold uppercase tracking-widest opacity-40 leading-loose">
+                      Our analytical engine will restructure your professional sequence using the STAR mandate. 
+                      High-density keyword injection is applied to ensure executive-level visibility in any tracking system.
                     </p>
                   </div>
-                  <div className="space-y-4">
-                    <Label className="text-[10px] font-bold uppercase tracking-[0.3em] opacity-60">Target Profession</Label>
-                    <Input 
-                      value={targetRole}
-                      onChange={(e) => setTargetRole(e.target.value)}
-                      placeholder="e.g. Senior Backend Architect"
-                      className="h-12 rounded-none border-border/30 bg-background/50 italic font-light tracking-wide"
-                    />
+                  <div className="space-y-8 pt-4">
+                    <Label className="text-[10px] font-bold uppercase tracking-[0.4em] text-muted">Target Objective (Role Title)</Label>
+                    <div className="relative group">
+                      <Input 
+                        value={targetRole}
+                        onChange={(e) => setTargetRole(e.target.value)}
+                        placeholder="e.g. Senior Principal Architect"
+                        className="h-20 rounded-none border-border/10 bg-[#0B0F14]/40 italic font-light text-xl px-8 focus-visible:ring-primary/20 transition-all"
+                      />
+                      <div className="absolute inset-y-0 right-8 flex items-center">
+                         <Sparkles className="w-5 h-5 text-primary/20" />
+                      </div>
+                    </div>
                     <Button 
                       onClick={optimizeWithAI}
                       disabled={optimizing || !targetRole}
-                      className="w-full h-16 gap-3 bg-primary hover:bg-primary/90 text-primary-foreground rounded-none uppercase font-black tracking-[0.4em] text-[11px] shadow-2xl transition-all active:scale-95"
+                      className="w-full h-28 gap-8 bg-primary hover:bg-primary/90 text-primary-foreground rounded-none uppercase font-black tracking-[0.6em] text-xs shadow-[0_0_50px_rgba(212,175,55,0.15)] transition-all relative overflow-hidden group"
                     >
-                      {optimizing ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
-                      {optimizing ? "Optimizing..." : "ATS AI Enhance"}
+                      {optimizing ? <Loader2 className="h-8 w-8 animate-spin" /> : <Sparkles className="h-8 w-8 group-hover:rotate-12 transition-transform" />}
+                      {optimizing ? "Synthesizing Chronicle..." : "Execute AI Transformation"}
+                      <div className="absolute inset-0 bg-white/10 opacity-0 group-hover:opacity-100 transition-opacity skew-x-12 translate-x-full group-hover:translate-x-0 duration-1000" />
                     </Button>
                   </div>
                </div>
             </TabsContent>
           </Tabs>
 
-        <Card className="rounded-none border-border/40 border bg-card/50 shadow-2xl relative overflow-hidden">
-          <ScrollArea className="h-[600px]">
-            <CardContent className="p-10 space-y-10">
-              <div className="space-y-6">
-                <h3 className="text-[10px] font-bold text-primary uppercase tracking-[0.4em] opacity-60">Identity</h3>
-                <div className="space-y-4">
-                  <Input 
-                    placeholder="Full Name" 
-                    value={data.personalInfo.fullName} 
-                    onChange={(e) => updatePersonalInfo("fullName", e.target.value)} 
-                    className="h-14 rounded-none border-border/30 focus-visible:ring-primary/20 bg-background/50 italic font-light text-lg px-4"
-                  />
-                  <div className="grid grid-cols-2 gap-4">
-                    <Input 
-                      placeholder="Email" 
-                      value={data.personalInfo.email} 
-                      onChange={(e) => updatePersonalInfo("email", e.target.value)} 
-                      className="h-14 rounded-none border-border/30 focus-visible:ring-primary/20 bg-background/50 italic font-light text-base px-4"
-                    />
-                    <Input 
-                      placeholder="Phone" 
-                      value={data.personalInfo.phone} 
-                      onChange={(e) => updatePersonalInfo("phone", e.target.value)} 
-                      className="h-14 rounded-none border-border/30 focus-visible:ring-primary/20 bg-background/50 italic font-light text-base px-4"
-                    />
-                  </div>
-                  <Input 
-                    placeholder="Location" 
-                    value={data.personalInfo.location} 
-                    onChange={(e) => updatePersonalInfo("location", e.target.value)} 
-                    className="h-14 rounded-none border-border/30 focus-visible:ring-primary/20 bg-background/50 italic font-light text-base px-4"
-                  />
-                  <Textarea 
-                    placeholder="Brief Professional Narrative" 
-                    value={data.personalInfo.summary} 
-                    onChange={(e) => updatePersonalInfo("summary", e.target.value)} 
-                    rows={4}
-                    className="rounded-none border-border/30 focus-visible:ring-primary/20 bg-background/50 italic font-light text-base p-4 resize-none leading-relaxed"
-                  />
-                </div>
-              </div>
-
-              <div className="space-y-6 pt-6 border-t border-border/20">
-                <h3 className="text-[10px] font-bold text-primary uppercase tracking-[0.4em] opacity-60">Expertise</h3>
-                <Textarea 
-                  placeholder="e.g. ArtificiaI Intelligence, Strategic Leadership..." 
-                  value={data.skills} 
-                  onChange={(e) => setData(prev => ({...prev, skills: e.target.value}))} 
-                  rows={3}
-                  className="rounded-none border-border/30 focus-visible:ring-primary/20 bg-background/50 italic font-light text-base p-4 resize-none leading-relaxed"
-                />
-              </div>
-            </CardContent>
-          </ScrollArea>
-        </Card>
-
-        <div className="flex flex-col gap-4">
-           <Button onClick={() => handlePrint()} className="h-16 rounded-none bg-primary hover:bg-primary/90 transition-all font-bold uppercase tracking-[0.3em] text-xs shadow-xl group">
-              <Printer className="w-5 h-5 mr-4 group-hover:scale-110 transition-transform" />
-              Obtain High-Res Document
+        <div className="flex flex-col gap-6 pt-12 border-t border-border/5">
+           <Button onClick={() => handlePrint()} className="h-24 rounded-none bg-primary hover:bg-primary/90 transition-all font-bold uppercase tracking-[0.5em] text-xs shadow-2xl relative overflow-hidden group text-primary-foreground">
+              <Printer className="w-6 h-6 mr-6 group-hover:scale-110 transition-transform" />
+              Manifest High-Res Document
+              <div className="absolute inset-0 bg-white/10 opacity-0 group-hover:opacity-100 transition-opacity skew-x-12 translate-x-full group-hover:translate-x-0 duration-1000" />
            </Button>
-           <Button variant="ghost" onClick={handleSave} disabled={saving} className="h-14 rounded-none border border-primary/20 hover:bg-primary/10 transition-all font-bold uppercase tracking-[0.3em] text-[10px]">
-              {saving ? <Loader2 className="w-4 h-4 mr-3 animate-spin" /> : <Save className="w-4 h-4 mr-3" />}
-              Commit to Vault
+           <Button 
+              variant="ghost" 
+              onClick={handleSave} 
+              disabled={saving} 
+              className="h-16 rounded-none border border-primary/10 hover:bg-primary/5 transition-all font-bold uppercase tracking-[0.3em] text-[10px] text-muted-foreground hover:text-primary relative"
+           >
+              {saving ? <Loader2 className="w-4 h-4 mr-4 animate-spin" /> : (savedSuccess ? <CheckCircle2 className="w-4 h-4 mr-4 text-primary" /> : <Save className="w-4 h-4 mr-4" />)}
+              {savedSuccess ? "Synchronized Successfully" : "Commit to Personal Vault"}
            </Button>
         </div>
       </div>
 
       {/* Resume Preview */}
-      <div className="flex-1 bg-muted/30 p-8 sm:p-16 rounded-none border border-border/30 min-h-[1100px] flex justify-center sticky top-12 shadow-inner overflow-auto">
+      <div className="flex-1 bg-[#0B0F14]/30 p-12 sm:p-24 rounded-none border border-border/10 min-h-[1200px] flex justify-center sticky top-24 shadow-inner overflow-auto selection:bg-primary/10">
          <div 
            ref={resumeRef}
-           className={`bg-white w-[210mm] min-h-[297mm] p-[30mm] shadow-2xl text-black print:shadow-none print:p-0 ring-1 ring-black/5 ${getTemplateStyles()} relative`}
+           className={`bg-white w-[210mm] min-h-[297mm] p-[30mm] shadow-2xl text-black print:shadow-none print:p-0 ring-1 ring-black/5 ${getTemplateStyles()} relative transition-all duration-1000`}
          >
             <div 
-              className="w-full h-full" 
+              className="w-full h-full animate-in fade-in duration-1000" 
               style={{ fontSize: `${fontSize}pt`, lineHeight: lineHeight }}
             >
               {/* Fine watermark for luxury templates */}
-              <div className="absolute top-8 right-8 text-[8px] font-bold uppercase tracking-[0.5em] opacity-10 select-none">
-                Sanctuary Curated
+              <div className="absolute top-10 right-10 text-[8px] font-bold uppercase tracking-[0.8em] opacity-5 select-none pointer-events-none">
+                Sanctuary Curated Document
               </div>
 
               <Header />
               
-              <Section title="Narrative">
-                 <p className="leading-relaxed opacity-80 italic font-light">{data.personalInfo.summary}</p>
+              <Section title="The Narrative">
+                 <p className="leading-relaxed opacity-80 italic font-light whitespace-pre-wrap">{data.personalInfo.summary}</p>
               </Section>
 
-              <Section title="Chronicle">
-                 <div className="space-y-10">
+              <Section title="The Chronicle">
+                 <div className="space-y-12">
                    {data.experience.map((exp) => (
                       <div key={exp.id} className="group relative">
-                         <div className="flex justify-between items-baseline mb-3">
-                            <h3 className="font-heading text-2xl italic tracking-tight group-hover:text-primary transition-colors">{exp.role}</h3>
-                            <span className="text-[10px] font-bold uppercase tracking-widest opacity-40 italic">{exp.period}</span>
+                         <div className="flex justify-between items-baseline mb-4">
+                            <h3 className="font-heading text-3xl italic tracking-tight group-hover:text-primary transition-colors duration-500">{exp.role || "Untitled Role"}</h3>
+                            <span className="text-[11px] font-bold uppercase tracking-widest opacity-40 italic">{exp.period}</span>
                          </div>
-                         <div className="text-sm font-bold uppercase tracking-[0.2em] mb-4 text-primary/60">
-                           {exp.company}
+                         <div className="text-[12px] font-bold uppercase tracking-[0.3em] mb-6 text-primary/60">
+                           {exp.company || "Anonymous Entity"}
                          </div>
-                         <p className="leading-relaxed font-light italic opacity-70 border-l border-primary/10 pl-6">{exp.description}</p>
+                         <p className="leading-relaxed font-light italic opacity-70 border-l-2 border-primary/10 pl-10 whitespace-pre-wrap">{exp.description || "In transition..."}</p>
                       </div>
                    ))}
                  </div>
               </Section>
 
-             <Section title="Foundation">
-               <div className="space-y-8">
+             <Section title="The Foundation">
+               <div className="space-y-10">
                  {data.education.map((edu) => (
-                    <div key={edu.id} className="flex justify-between items-start">
-                       <div className="space-y-1">
-                          <h3 className="font-heading text-xl italic">{edu.degree}</h3>
-                           <div className="text-[11px] font-bold uppercase tracking-widest opacity-50">{edu.school}</div>
+                    <div key={edu.id} className="flex justify-between items-start group">
+                       <div className="space-y-2">
+                          <h3 className="font-heading text-2xl italic group-hover:text-primary transition-colors">{edu.degree || "Candidate"}</h3>
+                           <div className="text-[12px] font-bold uppercase tracking-widest opacity-50">{edu.school || "Institution"}</div>
                        </div>
-                       <span className="text-[10px] font-bold opacity-30 italic">{edu.year}</span>
+                       <span className="text-[11px] font-bold opacity-30 italic">{edu.year}</span>
                     </div>
                  ))}
                </div>
              </Section>
 
-             <Section title="Arsenal">
-                <div className="flex flex-wrap gap-x-8 gap-y-4">
+             <Section title="The Arsenal">
+                <div className="flex flex-wrap gap-x-12 gap-y-6">
                   {data.skills.split(',').map((skill, i) => (
-                    <div key={i} className="flex items-center gap-3">
-                      <div className="h-1 w-1 rounded-full bg-primary/40" />
-                      <span className="text-xs font-bold uppercase tracking-widest opacity-60">
+                    <div key={i} className="flex items-center gap-4">
+                      <div className="h-1.5 w-1.5 rounded-full bg-primary/40" />
+                      <span className="text-[12px] font-bold uppercase tracking-[0.2em] opacity-60">
                         {skill.trim()}
                       </span>
                     </div>

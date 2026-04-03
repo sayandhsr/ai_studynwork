@@ -11,64 +11,78 @@ export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
     const url = body.url || body.videoUrl || "";
+    const level = body.level || "detailed"; // brief, detailed, actionable
     const orKey = process.env.OPENROUTER_API_KEY;
     const rapidKey = process.env.RAPIDAPI_KEY;
 
-    if (!url) {
-      return NextResponse.json({ error: "No URL provided" }, { status: 400 });
+    if (!url && !body.manualTranscript) {
+      return NextResponse.json({ error: "No URL or transcript provided" }, { status: 400 });
     }
 
-    // ✅ Extract video ID
-    const match = url.match(/(?:v=|youtu\.be\/|shorts\/|embed\/)([^&?#/]+)/);
-    const videoId = match ? match[1] : null;
+    let transcriptText = body.manualTranscript || "";
+    let videoId = null;
 
-    if (!videoId) {
-      return NextResponse.json({
-        summary: "Title: Invalid Video\nSummary: Could not extract video ID from the URL provided.\nKey Points:\n• Please check the link format.\n• Example: youtube.com/watch?v=...",
-        v: "8.1"
-      });
-    }
+    if (url && !transcriptText) {
+      // ✅ Extract video ID
+      const match = url.match(/(?:v=|youtu\.be\/|shorts\/|embed\/)([^&?#/]+)/);
+      videoId = match ? match[1] : null;
 
-    // ✅ Get transcript (RapidAPI)
-    let transcriptText = "";
-    if (rapidKey) {
-      try {
-        const transcriptRes = await fetch(
-          `https://youtube-transcript3.p.rapidapi.com/api/transcript?videoId=${videoId}`,
-          {
-            headers: {
-              "X-RapidAPI-Key": rapidKey,
-              "X-RapidAPI-Host": "youtube-transcript3.p.rapidapi.com",
-            },
-            signal: AbortSignal.timeout(15000)
+      if (!videoId) {
+        return NextResponse.json({
+          summary: "Title: Invalid Video\nSummary: Could not extract video ID from the URL provided.\nKey Points:\n• Please check the link format.\n• Example: youtube.com/watch?v=...",
+          v: "8.1"
+        });
+      }
+
+      // ✅ Get transcript (RapidAPI)
+      if (rapidKey) {
+        try {
+          const transcriptRes = await fetch(
+            `https://youtube-transcript3.p.rapidapi.com/api/transcript?videoId=${videoId}`,
+            {
+              headers: {
+                "X-RapidAPI-Key": rapidKey,
+                "X-RapidAPI-Host": "youtube-transcript3.p.rapidapi.com",
+              },
+              signal: AbortSignal.timeout(15000)
+            }
+          );
+
+          if (transcriptRes.ok) {
+            const data = await transcriptRes.json();
+            transcriptText = data?.transcript
+              ?.map((t: any) => t.text)
+              .join(" ");
           }
-        );
-
-        if (transcriptRes.ok) {
-          const data = await transcriptRes.json();
-          transcriptText = data?.transcript
-            ?.map((t: any) => t.text)
-            .join(" ");
+        } catch (e) { 
+          console.log("RapidAPI transcript failed, falling back..."); 
         }
-      } catch (e) { 
-        console.log("RapidAPI transcript failed, falling back..."); 
+      }
+
+      // ✅ Native Fallback
+      if (!transcriptText || transcriptText.length < 50) {
+        try {
+          const t1 = await YoutubeTranscript.fetchTranscript(videoId);
+          if (t1) transcriptText = t1.map(t => t.text).join(" ");
+        } catch (e) {}
+      }
+
+      // ✅ Last Resort Fallback
+      if (!transcriptText || transcriptText.length < 50) {
+        transcriptText = `[CRITICAL: NO TRANSCRIPT] Summarize the likely content of this video based ONLY on its URL and any metadata you can infer: ${url}. If you cannot be certain, explain the likely topics based on common YouTube video patterns for similar URLs.`;
       }
     }
 
-    // ✅ Native Fallback (Just in case)
-    if (!transcriptText || transcriptText.length < 50) {
-       try {
-         const t1 = await YoutubeTranscript.fetchTranscript(videoId);
-         if (t1) transcriptText = t1.map(t => t.text).join(" ");
-       } catch (e) {}
-    }
+    // ✅ Tiered Prompts
+    const prompts: Record<string, string> = {
+      brief: "Provide a concise, high-level summary. Focus on the core message and primary takeaways in under 150 words.",
+      detailed: "Provide a comprehensive analysis. Include the main narrative, supporting arguments, and nuanced details. Aim for a thorough synthesis.",
+      actionable: "Focus on practical application. Extract every specific step, tool, checklist, or piece of advice mentioned. Structure it as a guide."
+    };
 
-    // ✅ Last Resort Fallback (User Logic)
-    if (!transcriptText || transcriptText.length < 50) {
-      transcriptText = `Summarize this YouTube video based on its URL: ${url}. Provide a high-level educational summary and key takeaways if no transcript is available.`;
-    }
+    const selectedPrompt = prompts[level] || prompts.detailed;
 
-    // ✅ CALL OPENROUTER (User Request)
+    // ✅ CALL OPENROUTER
     const aiRes = await fetch("https://openrouter.ai/api/v1/chat/completions", {
       method: "POST",
       headers: {
@@ -78,55 +92,60 @@ export async function POST(req: NextRequest) {
         "X-Title": "Spurce Sanctuary"
       },
       body: JSON.stringify({
-        model: "deepseek/deepseek-chat",
+        model: "google/gemini-2.0-flash-001",
         messages: [
           {
+            role: "system",
+            content: `You are Spurce AI, an elite intellectual synthesizer. Your goal is to distill video content into premium-grade reports.
+            
+            Always return the response in this exact format:
+            Title: (Professional High-End Title)
+            Summary: (A cohesive paragraph reflecting the requested depth)
+            Key Points:
+            • (Point 1)
+            • (Point 2)
+            • (Point 3)
+            • (Point 4)
+            • (Point 5)`
+          },
+          {
             role: "user",
-            content: `Summarize this content:
-
-${transcriptText.substring(0, 15000)}
-
-Return:
-Title: (Professional Video Title)
-Summary: (Concise paragraph)
-Key Points: (Exactly 5 bullet points starting with •)
-`,
+            content: `${selectedPrompt}\n\nContent to synthesize:\n${transcriptText.substring(0, 25000)}`
           },
         ],
       }),
-      signal: AbortSignal.timeout(40000)
+      signal: AbortSignal.timeout(45000)
     });
 
     const aiData = await aiRes.json();
-    const output = aiData?.choices?.[0]?.message?.content || "Spurce AI Error: Failed to generate summary. Please check your OpenRouter credits/balance.";
+    const output = aiData?.choices?.[0]?.message?.content || "Spurce AI Error: The synthesis engine failed to resolve. Check credits or connection.";
 
-    // ✅ DB Cache (Optional but good)
+    // ✅ DB Cache
     try {
       const supabase = await createClient();
       const { data: { user } } = await supabase.auth.getUser();
       if (user && output.length > 50) {
         await supabase.from("yt_summaries").upsert([{ 
           user_id: user.id, 
-          video_id: videoId, 
-          video_url: url,
+          video_id: videoId || `manual-${Date.now()}`, 
+          video_url: url || "Manual Paste",
           summary: output, 
-          mode_used: "User-Simple-v8.1"
-        }], { onConflict: 'video_id' });
+          mode_used: `Spurce-v30-${level}`
+        }]);
       }
     } catch (e) {}
 
-    // ✅ RETURN CLEAN RESPONSE (Spurce Edition)
     return NextResponse.json({
       summary: output,
-      v: "30.1",
-      debug: "Engine: Spurce-v8 | Mode: User-DeepSeek | Trace: SPURCE_USER_ACTIVE"
+      v: "30.5",
+      debug: `Engine: Gemini-2.0-Flash | Mode: Tiered-${level} | Trace: SPURCE_ENHANCED_ACTIVE`
     });
 
   } catch (err: any) {
     console.error(err);
     return NextResponse.json({
-      summary: `Title: Synthesis Error (v30.1)\nSummary: ${err?.message || "The backend encountered an execution error."}\nKey Points:\n• Network timeout or invalid API response.\n• Trace: SPURCE_FAIL_30.1`,
-      v: "30.1"
+      summary: `Title: Synthesis Interruption (v30.5)\nSummary: ${err?.message || "The analytical engine encountered a critical path failure."}\nKey Points:\n• Network latency exceedance.\n• API quota or rate limiting.\n• Trace: SPURCE_FAIL_30.5`,
+      v: "30.5"
     });
   }
 }

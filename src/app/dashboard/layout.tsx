@@ -3,7 +3,9 @@ import { TopNav } from "@/components/top-nav"
 import { SidebarProvider } from "@/components/ui/sidebar"
 import { createClient } from "@/lib/supabase/server"
 import { redirect } from "next/navigation"
+import { PageTransition } from "@/components/page-transition"
 import { AIAssistant } from "@/components/dashboard/ai-assistant"
+import { CommandPalette } from "@/components/dashboard/command-palette"
 
 export default async function DashboardLayout({
   children,
@@ -35,7 +37,9 @@ export default async function DashboardLayout({
           <TopNav user={profile} />
           <main className="flex-1 overflow-auto p-4 md:p-8 lg:p-12 relative">
             <div className="mx-auto max-w-7xl relative z-10">
-              {children}
+              <PageTransition>
+                {children}
+              </PageTransition>
             </div>
             {/* Subtle luxury watermark/background element */}
             <div className="absolute bottom-0 right-0 p-12 opacity-[0.02] pointer-events-none select-none">
@@ -44,6 +48,7 @@ export default async function DashboardLayout({
           </main>
         </div>
         <AIAssistant />
+        <CommandPalette />
       </div>
     </SidebarProvider>
   )
