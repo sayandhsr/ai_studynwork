@@ -13,6 +13,7 @@ import {
   SidebarGroupLabel,
   useSidebar,
 } from "@/components/ui/sidebar"
+import { Button } from "@/components/ui/button"
 import {
   Briefcase,
   FileText,
@@ -21,6 +22,7 @@ import {
   Cloud,
   Settings,
   Telescope,
+  PlusCircle,
 } from "lucide-react"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
@@ -62,10 +64,19 @@ export function AppSidebar() {
           </div>
           <div className="flex flex-col leading-tight group-data-[collapsible=icon]:hidden">
             <span className="text-sm font-bold tracking-tight">Sanctuary</span>
-            <span className="text-[10px] font-medium text-muted-foreground uppercase tracking-widest leading-none">v9.0 Alpha</span>
+            <span className="text-[10px] font-medium text-muted-foreground uppercase tracking-widest leading-none">v9.5 Alpha</span>
           </div>
         </Link>
       </SidebarHeader>
+
+      <div className="px-4 py-6 group-data-[collapsible=icon]:hidden">
+        <Button asChild className="w-full h-11 bg-primary hover:bg-primary/90 text-primary-foreground shadow-lg shadow-primary/10 rounded-xl font-bold uppercase tracking-widest text-[10px] transition-all group/new">
+          <Link href="/dashboard/notes/new" className="flex items-center justify-center gap-2">
+            <PlusCircle className="h-4 w-4 group-hover/new:rotate-90 transition-transform duration-300" />
+            <span>Initialize Fragment</span>
+          </Link>
+        </Button>
+      </div>
 
       <SidebarContent className="py-4">
         <SidebarGroup>

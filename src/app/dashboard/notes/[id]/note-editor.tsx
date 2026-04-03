@@ -1,15 +1,22 @@
-"use client"
-
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
 import { useRouter } from "next/navigation"
 import { createClient } from "@/lib/supabase/client"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { Textarea } from "@/components/ui/textarea"
-import { Card, CardContent } from "@/components/ui/card"
-import { ArrowLeft, Save, Loader2, Pin } from "lucide-react"
+import {
+  Save,
+  ArrowLeft,
+  Loader2,
+  Trash2,
+  Sparkles,
+  PenTool,
+  Hash,
+  Pin,
+  Printer,
+} from "lucide-react"
+import { useReactToPrint } from "react-to-print"
+import { toast } from "sonner"
 import Link from "next/link"
-
 import { TiptapEditor } from "@/components/notes/editor"
 
 interface NoteData {
@@ -30,6 +37,12 @@ export function NoteEditor({ initialData }: { initialData?: NoteData | null }) {
   const [category, setCategory] = useState(initialData?.category || "")
   const [pinned, setPinned] = useState(initialData?.pinned || false)
   const [isSaving, setIsSaving] = useState(false)
+  
+  const contentRef = useRef<HTMLDivElement>(null)
+  const handlePrint = useReactToPrint({
+    contentRef,
+    documentTitle: title || "Technical Fragment",
+  })
   const [isAutoSaving, setIsAutoSaving] = useState(false)
   const [lastSaved, setLastSaved] = useState<Date | null>(initialData?.id ? new Date() : null)
   
@@ -171,6 +184,15 @@ export function NoteEditor({ initialData }: { initialData?: NoteData | null }) {
              </div>
            )}
            <Button 
+            variant="outline" 
+            size="sm"
+            onClick={() => handlePrint()}
+            className="h-8 rounded-lg border-border text-[10px] font-bold uppercase tracking-widest hover:bg-primary/5 hover:text-primary"
+          >
+            <Printer className="h-3.5 w-3.5 mr-2" /> Download PDF
+          </Button>
+
+          <Button 
              onClick={handleSave} 
              disabled={isSaving} 
              className="rounded-none h-14 px-10 bg-primary hover:bg-primary/90 font-bold uppercase tracking-[0.3em] text-[10px] transition-all shadow-[0_0_25px_rgba(212,175,55,0.15)] group"
@@ -181,23 +203,25 @@ export function NoteEditor({ initialData }: { initialData?: NoteData | null }) {
         </div>
       </div>
 
-      <div className="space-y-10">
-        <Input
-          placeholder="A Title Worth Remembering..."
-          value={title}
-          onChange={(e) => setTitle(e.target.value)}
-          className="text-5xl md:text-6xl font-heading tracking-tight italic border-0 px-0 focus-visible:ring-0 shadow-none rounded-none bg-transparent h-auto placeholder:text-muted/10 selection:bg-primary/20"
-        />
-        
-        <div className="glass-card p-10 min-h-[700px] relative overflow-hidden">
-          <div className="absolute top-0 right-0 p-8 opacity-[0.02] pointer-events-none">
-             <Save className="w-32 h-32" />
-          </div>
-          <TiptapEditor 
-             content={content} 
-             onChange={setContent} 
-             placeholder="Begin your intellectual journey here..."
+      <div className="space-y-10" ref={contentRef}>
+        <div className="print:p-12 print:text-black">
+          <Input
+            placeholder="A Title Worth Remembering..."
+            value={title}
+            onChange={(e) => setTitle(e.target.value)}
+            className="text-5xl md:text-6xl font-heading tracking-tight italic border-0 px-0 focus-visible:ring-0 shadow-none rounded-none bg-transparent h-auto placeholder:text-muted/10 selection:bg-primary/20 uppercase print:text-4xl print:mb-8"
           />
+          
+          <div className="glass-card p-10 min-h-[700px] relative overflow-hidden print:border-none print:shadow-none print:p-0">
+            <div className="absolute top-0 right-0 p-8 opacity-[0.02] pointer-events-none print:hidden">
+               <Save className="w-32 h-32" />
+            </div>
+            <TiptapEditor 
+               content={content} 
+               onChange={setContent} 
+               placeholder="Begin your intellectual journey here..."
+            />
+          </div>
         </div>
       </div>
     </div>

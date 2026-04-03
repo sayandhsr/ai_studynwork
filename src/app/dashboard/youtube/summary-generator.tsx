@@ -59,7 +59,20 @@ export function SummaryGenerator() {
         video_title: data.summary.match(/Title:\s*(.*)/i)?.[1] || "Video Synthesis",
         thumbnail: `https://img.youtube.com/vi/${getYouTubeID(url)}/maxresdefault.jpg`
       })
-      toast.success("Intelligence captured successfully.")
+
+      // PERSIST TO HISTORY - Ensure it appears in the vault
+      const { data: { user } } = await supabase.auth.getUser()
+      if (user) {
+        await supabase.from("yt_summaries").insert([{
+          user_id: user.id,
+          video_url: url,
+          video_id: getYouTubeID(url),
+          summary: data.summary,
+          mode_used: level
+        }])
+      }
+
+      toast.success("Intelligence captured and archived.")
       setUrl("")
       router.refresh()
     } catch (err: any) {
