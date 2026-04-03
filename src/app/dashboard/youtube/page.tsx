@@ -1,5 +1,5 @@
 import { createClient } from "@/lib/supabase/server"
-import { Youtube, ExternalLink, Sparkles, History, PlayCircle } from "lucide-react"
+import { Youtube, ExternalLink, Play, Clock, Sparkles } from "lucide-react"
 import Link from "next/link"
 import { formatDistanceToNow } from "date-fns"
 import { SummaryGenerator } from "./summary-generator"
@@ -9,87 +9,97 @@ export default async function YouTubeSummarizerPage() {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
 
-  let summaries: any[] | null = null;
-  if (user) {
-    const { data } = await supabase
-      .from("yt_summaries")
-      .select("*")
-      .order("created_at", { ascending: false });
-    summaries = data;
+  let summaries: any[] = [];
+  try {
+    if (user) {
+      const { data } = await supabase
+        .from("yt_summaries")
+        .select("*")
+        .order("created_at", { ascending: false });
+      summaries = data || [];
+    }
+  } catch (err) {
+    console.error("YouTube summaries fetch error", err)
   }
 
   return (
     <div className="max-w-5xl mx-auto px-4 py-8 space-y-12">
-      {/* Header */}
-      <div className="space-y-2">
-        <p className="text-xs font-bold tracking-widest text-primary uppercase">Video Intelligence</p>
-        <h1 className="text-3xl font-bold text-white">YouTube Summarizer</h1>
-        <p className="text-sm text-gray-400 max-w-2xl">
-          Distill long videos into actionable technical summaries in seconds.
+      <div className="space-y-2 border-b border-border pb-8">
+        <p className="text-[10px] font-bold tracking-widest text-primary uppercase">Automated Synthesis</p>
+        <h1 className="text-3xl font-bold text-foreground">Video Intake Vault</h1>
+        <p className="text-sm text-muted-foreground font-medium max-w-2xl">
+          Distill complex lectures and technical videos into clear, professional fragments of wisdom.
         </p>
       </div>
 
-      {/* Generator Section */}
-      <div className="p-6 bg-card border border-border rounded-xl shadow-lg">
+      {/* Generator - High Performance UI */}
+      <div className="p-6 rounded-2xl border border-border bg-card shadow-lg">
         <SummaryGenerator />
       </div>
 
-      {/* History Grid */}
       <div className="space-y-6">
         <div className="flex items-center gap-3 border-b border-border pb-4">
           <Youtube className="h-5 w-5 text-red-500" />
-          <h2 className="text-sm font-bold uppercase tracking-widest text-white">Recent Synthesis</h2>
+          <h2 className="text-xs font-bold uppercase tracking-widest text-foreground">Synthesis History</h2>
         </div>
 
-        {summaries && summaries.length > 0 ? (
+        {summaries.length > 0 ? (
           <div className="grid gap-6 md:grid-cols-2">
             {summaries.map((summary) => (
-              <div key={summary.id} className="p-6 rounded-xl border border-border bg-card hover:border-primary/20 transition-all flex flex-col h-full group">
-                <div className="flex-1 space-y-4">
-                  <div className="flex justify-between items-start gap-4">
-                    <div className="space-y-1 truncate flex-1">
+              <div key={summary.id} className="p-6 rounded-2xl border border-border bg-card hover:border-primary/40 transition-all flex flex-col h-full group shadow-sm">
+                <div className="flex-1 space-y-5">
+                  <div className="flex justify-between items-start">
+                    <div className="space-y-2 truncate flex-1 min-w-0 pr-4">
                       <a 
                         href={summary.video_url} 
                         target="_blank" 
                         rel="noreferrer"
-                        className="text-sm font-bold text-white hover:text-primary flex items-center gap-2 group-hover:translate-x-1 transition-all"
+                        className="text-sm font-bold text-foreground hover:text-primary transition-all flex items-center gap-2 group-hover:translate-x-1"
                       >
-                         <PlayCircle className="h-4 w-4 shrink-0" />
-                         <span className="truncate">Source Video</span>
-                         <ExternalLink className="h-3 w-3 opacity-50" />
+                         <Play className="h-4 w-4 shrink-0" />
+                         <span>Access Resource</span>
+                         <ExternalLink className="h-3 w-3 opacity-40 shrink-0" />
                       </a>
-                      <div className="flex items-center gap-3 text-[10px] font-medium text-gray-500 uppercase">
-                        <History className="h-3.5 w-3.5" />
-                        {formatDistanceToNow(new Date(summary.created_at), { addSuffix: true })}
+                      <div className="flex items-center gap-3 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+                        <span className="flex items-center gap-1.5">
+                           <Clock className="h-3.5 w-3.5 opacity-40" />
+                           {formatDistanceToNow(new Date(summary.created_at), { addSuffix: true })}
+                        </span>
                         {summary.mode_used && (
-                          <span className="text-primary font-bold ml-2 px-1.5 py-0.5 bg-primary/10 rounded">{summary.mode_used}</span>
+                          <span className="text-primary/70 font-bold bg-primary/10 px-2 py-0.5 rounded leading-none">
+                             {summary.mode_used}
+                          </span>
                         )}
                       </div>
                     </div>
                   </div>
                   
                   <div className="flex-1">
-                    <p className="text-sm leading-relaxed text-gray-300 line-clamp-5">
-                      {summary.summary.split('\n').find(l => !l.toLowerCase().includes('title:'))?.replace('Summary:', '').trim() || "No preview available."}
+                    <p className="text-sm leading-relaxed text-muted-foreground line-clamp-5 font-medium">
+                      {summary.summary.split('\n').find(l => !l.toLowerCase().includes('title:'))?.replace('Summary:', '').trim() || "A fragment of visual synthesis."}
                     </p>
                   </div>
                 </div>
 
-                <div className="mt-6 pt-4 border-t border-border/50 flex justify-end">
-                  <Button variant="ghost" size="sm" asChild className="h-8 text-[10px] font-bold uppercase tracking-widest text-primary hover:bg-primary/10">
-                    <Link href={`/dashboard/notes/new?title=Video Note&content=${encodeURIComponent(summary.summary)}`}>
-                      <Sparkles className="h-3.5 w-3.5 mr-2" />
-                      Save to Notes
-                    </Link>
-                  </Button>
+                <div className="mt-8 pt-4 border-t border-border/10 flex justify-between items-center">
+                    <div className="flex gap-1">
+                       <div className="h-1.5 w-8 rounded-full bg-primary/20" />
+                       <div className="h-1.5 w-2 rounded-full bg-primary/10" />
+                    </div>
+                    <Button variant="ghost" size="sm" asChild className="h-9 px-4 text-[10px] font-bold uppercase tracking-widest text-primary hover:bg-primary/10">
+                      <Link href={`/dashboard/notes/new?title=Synthesis Reflection&content=${encodeURIComponent(summary.summary)}`}>
+                        <Sparkles className="h-3.5 w-3.5 mr-2" />
+                        Inscribe Record
+                      </Link>
+                    </Button>
                 </div>
               </div>
             ))}
           </div>
         ) : (
-          <div className="text-center py-16 border border-dashed border-border rounded-xl">
-            <Youtube className="h-10 w-10 text-gray-700 mx-auto mb-4" />
-            <p className="text-sm text-gray-500 font-medium">Your synthesis vault is empty.</p>
+          <div className="flex flex-col items-center justify-center p-20 bg-card/20 border border-dashed border-border rounded-2xl text-center space-y-4">
+            <Youtube className="w-12 h-12 text-primary/10" />
+            <p className="text-[10px] font-bold tracking-widest uppercase text-muted-foreground">The visual ledger is currently empty.</p>
           </div>
         )}
       </div>

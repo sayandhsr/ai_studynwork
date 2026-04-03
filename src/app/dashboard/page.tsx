@@ -1,6 +1,6 @@
 import { createClient } from "@/lib/supabase/server"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { FileText, Youtube, Briefcase, Plus, Clock, ArrowRight } from "lucide-react"
+import { FileText, Youtube, Briefcase, ChevronRight, Clock } from "lucide-react"
 import Link from "next/link"
 import { StatCard } from "@/components/dashboard/stat-card"
 import { AnalyticsCharts } from "./analytics-charts"
@@ -9,162 +9,138 @@ export default async function DashboardPage() {
   const supabase = await createClient()
 
   let user = null
-  let stats = { notesCount: 0, ytCount: 0, jobsCount: 0 }
-  let activities = { recentNotes: [], recentSummaries: [], recentJobs: [] }
+  let stats = { notes: 0, youtube: 0, jobs: 0 }
+  let recent = { notes: [], youtube: [], jobs: [] }
 
   try {
-    const { data } = await supabase.auth.getUser()
-    user = data?.user
+    const { data: authData } = await supabase.auth.getUser()
+    user = authData?.user
 
     if (user) {
-      const [
-        { count: nC },
-        { count: yC },
-        { count: jC }
-      ] = await Promise.all([
+      // Safe data fetching with fallbacks to prevent 500 errors
+      const [notesRes, ytRes, jobsRes] = await Promise.all([
         supabase.from('notes').select('*', { count: 'exact', head: true }),
         supabase.from('yt_summaries').select('*', { count: 'exact', head: true }),
         supabase.from('saved_jobs').select('*', { count: 'exact', head: true })
       ])
-      
-      stats = { notesCount: nC || 0, ytCount: yC || 0, jobsCount: jC || 0 }
 
-      const [
-        { data: rN },
-        { data: rS },
-        { data: rJ }
-      ] = await Promise.all([
+      stats = {
+        notes: notesRes.count || 0,
+        youtube: ytRes.count || 0,
+        jobs: jobsRes.count || 0
+      }
+
+      const [rNotesRes, rYtRes, rJobsRes] = await Promise.all([
         supabase.from('notes').select('id, title, created_at').order('created_at', { ascending: false }).limit(3),
         supabase.from('yt_summaries').select('id, video_url, created_at').order('created_at', { ascending: false }).limit(3),
         supabase.from('saved_jobs').select('id, job_title, company, created_at').order('created_at', { ascending: false }).limit(3)
       ])
-      
-      activities = { 
-        recentNotes: rN || [], 
-        recentSummaries: rS || [], 
-        recentJobs: rJ || [] 
+
+      recent = {
+        notes: rNotesRes.data || [],
+        youtube: rYtRes.data || [],
+        jobs: rJobsRes.data || []
       }
     }
   } catch (err) {
-    console.error("Dashboard data fetch error:", err)
+    console.error("Critical: Dashboard data fetch error", err)
+    // Fallback stays as default empty state
   }
 
   if (!user) return null
 
-  const name = user.user_metadata?.full_name || "User"
+  const name = user.user_metadata?.full_name || user.email?.split("@")[0] || "Explorer"
   const avatar_url = user.user_metadata?.avatar_url || ""
-  const initials = name.split(" ").map((n: string) => n[0]).join("").substring(0, 2).toUpperCase()
+  const initials = name.substring(0, 2).toUpperCase()
 
   return (
-    <div className="space-y-6 pb-6">
-      {/* Welcome Section */}
-      <div className="p-6 bg-card border border-border rounded-xl">
-        <div className="flex items-center gap-6">
-          <Avatar className="h-16 w-16 border border-primary/20">
-            <AvatarImage src={avatar_url} alt={name} />
-            <AvatarFallback className="text-xl font-bold bg-primary/10 text-primary">{initials}</AvatarFallback>
-          </Avatar>
-          <div className="space-y-1">
-            <h1 className="text-2xl font-bold text-foreground">
-              Welcome, <span className="text-primary">{name.split(" ")[0]}</span>
-            </h1>
-            <p className="text-muted-foreground text-xs font-medium">
-              Your professional technical sanctuary is ready.
-            </p>
-          </div>
+    <div className="max-w-5xl mx-auto px-4 py-8 space-y-10">
+      {/* Header Panel - Professional Clean */}
+      <div className="flex flex-col md:flex-row items-center gap-6 p-8 rounded-2xl border border-primary/10 bg-card shadow-sm">
+        <Avatar className="h-16 w-16 border-2 border-primary/20">
+          <AvatarImage src={avatar_url} alt={name} />
+          <AvatarFallback className="text-xl font-bold bg-primary/10 text-primary">{initials}</AvatarFallback>
+        </Avatar>
+        <div className="text-center md:text-left space-y-1">
+          <h1 className="text-2xl font-bold text-foreground">
+            Welcome, <span className="text-primary">{name}</span>
+          </h1>
+          <p className="text-sm text-muted-foreground font-medium">
+            Manage your high-performance career sanctuary.
+          </p>
         </div>
       </div>
 
-      {/* Stats Grid */}
+      {/* Stats - Grid 3 */}
       <div className="grid gap-4 sm:grid-cols-3">
-        <StatCard label="Notes" value={stats.notesCount} icon={FileText} />
-        <StatCard label="Videos" value={stats.ytCount} icon={Youtube} />
-        <StatCard label="Jobs" value={stats.jobsCount} icon={Briefcase} />
+        <StatCard label="Technical Notes" value={stats.notes} icon={FileText} />
+        <StatCard label="Video Insights" value={stats.youtube} icon={Youtube} />
+        <StatCard label="Strategic Roles" value={stats.jobs} icon={Briefcase} />
       </div>
 
-      {/* Analytics */}
-      <div className="rounded-xl border border-border bg-card p-6">
-        <h3 className="text-xs text-primary uppercase tracking-widest font-bold mb-6">Activity Intelligence</h3>
-        <AnalyticsCharts 
-          data={{
-            productivity: [
-              { name: 'Mon', notes: 4, summaries: 2 },
-              { name: 'Tue', notes: 3, summaries: 5 },
-              { name: 'Wed', notes: 6, summaries: 3 },
-              { name: 'Thu', notes: 8, summaries: 4 },
-              { name: 'Fri', notes: 5, summaries: 6 },
-              { name: 'Sat', notes: 2, summaries: 1 },
-              { name: 'Sun', notes: 3, summaries: 2 },
-            ],
-            career: [
-              { name: 'Jan', applications: 12 },
-              { name: 'Feb', applications: 18 },
-              { name: 'Mar', applications: 15 },
-              { name: 'Apr', applications: stats.jobsCount },
-            ]
-          }}
-        />
-      </div>
+      {/* Main Content Area */}
+      <div className="grid gap-8 lg:grid-cols-2">
+         {/* Analytics Layer */}
+         <div className="p-6 rounded-2xl border border-border bg-card/50">
+            <div className="flex items-center justify-between mb-6">
+              <h3 className="text-xs font-bold uppercase tracking-widest text-primary">Intelligence Flow</h3>
+            </div>
+            <AnalyticsCharts 
+              data={{
+                productivity: [
+                  { name: 'Mon', notes: 4, summaries: 2 },
+                  { name: 'Tue', notes: 3, summaries: 5 },
+                  { name: 'Wed', notes: 6, summaries: 3 },
+                  { name: 'Thu', notes: 8, summaries: 4 },
+                  { name: 'Fri', notes: 5, summaries: 6 },
+                  { name: 'Sat', notes: 2, summaries: 1 },
+                  { name: 'Sun', notes: 3, summaries: 2 },
+                ],
+                career: [
+                  { name: 'Jan', applications: 12 },
+                  { name: 'Feb', applications: 18 },
+                  { name: 'Mar', applications: 15 },
+                  { name: 'Apr', applications: stats.jobs },
+                ]
+              }}
+            />
+         </div>
 
-      {/* Activity Grid */}
-      <div className="grid gap-6 lg:grid-cols-3">
-        {/* Notes */}
-        <div className="space-y-3">
-          <div className="flex items-center justify-between">
-            <h3 className="text-[10px] text-muted-foreground uppercase tracking-widest font-bold">Recent Notes</h3>
-            <Link href="/dashboard/notes" className="text-[9px] text-primary hover:underline font-bold">VIEW ALL</Link>
-          </div>
-          <div className="space-y-2">
-            {activities.recentNotes.length > 0 ? (
-               activities.recentNotes.map((note: any) => (
-                 <Link href={`/dashboard/notes/${note.id}`} key={note.id} className="block p-3 rounded-lg border border-border bg-card/50 hover:border-primary/30 transition-all">
-                   <h4 className="font-semibold text-sm line-clamp-1">{note.title}</h4>
-                   <p className="text-[10px] text-muted-foreground mt-1">{new Date(note.created_at).toLocaleDateString()}</p>
-                 </Link>
-               ))
-            ) : (
-               <p className="text-xs text-muted-foreground italic p-2">No notes recorded.</p>
-            )}
-          </div>
-        </div>
-        {/* YouTube */}
-        <div className="space-y-3">
-          <div className="flex items-center justify-between">
-            <h3 className="text-[10px] text-muted-foreground uppercase tracking-widest font-bold">Recent Videos</h3>
-            <Link href="/dashboard/youtube" className="text-[9px] text-primary hover:underline font-bold">VIEW ALL</Link>
-          </div>
-          <div className="space-y-2">
-            {activities.recentSummaries.length > 0 ? (
-               activities.recentSummaries.map((s: any) => (
-                 <a href={s.video_url} target="_blank" rel="noreferrer" key={s.id} className="block p-3 rounded-lg border border-border bg-card/50 hover:border-primary/30 transition-all">
-                   <h4 className="font-semibold text-sm line-clamp-1">Video Insight</h4>
-                   <p className="text-[10px] text-muted-foreground mt-1">{new Date(s.created_at).toLocaleDateString()}</p>
-                 </a>
-               ))
-            ) : (
-               <p className="text-xs text-muted-foreground italic p-2">No summaries recorded.</p>
-            )}
-          </div>
-        </div>
-        {/* Jobs */}
-        <div className="space-y-3">
-          <div className="flex items-center justify-between">
-            <h3 className="text-[10px] text-muted-foreground uppercase tracking-widest font-bold">Career Flow</h3>
-            <Link href="/dashboard/jobs" className="text-[9px] text-primary hover:underline font-bold">MANAGE</Link>
-          </div>
-          <div className="space-y-2">
-            {activities.recentJobs.length > 0 ? (
-               activities.recentJobs.map((j: any) => (
-                 <div key={j.id} className="p-3 rounded-lg border border-border bg-card/50 hover:border-primary/30 transition-all">
-                   <h4 className="font-semibold text-sm line-clamp-1">{j.job_title}</h4>
-                   <p className="text-[10px] text-muted-foreground mt-1">{j.company}</p>
-                 </div>
-               ))
-            ) : (
-               <p className="text-xs text-muted-foreground italic p-2">No jobs saved.</p>
-            )}
-          </div>
-        </div>
+         {/* Recent Actions List */}
+         <div className="space-y-6">
+            <h3 className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Recent Fragments</h3>
+            
+            <div className="space-y-3">
+              {recent.notes.map((note) => (
+                <Link 
+                  href={`/dashboard/notes/${note.id}`} 
+                  key={note.id}
+                  className="flex items-center justify-between p-4 rounded-xl border border-border bg-card hover:border-primary/40 transition-all group"
+                >
+                  <div className="flex items-center gap-4">
+                    <div className="p-2 rounded-lg bg-primary/5 text-primary">
+                      <FileText className="h-4 w-4" />
+                    </div>
+                    <div>
+                       <h4 className="text-sm font-semibold text-foreground group-hover:text-primary transition-colors line-clamp-1">{note.title}</h4>
+                       <p className="text-[10px] text-muted-foreground uppercase font-bold tracking-tighter mt-0.5">
+                          {new Date(note.created_at).toLocaleDateString()}
+                       </p>
+                    </div>
+                  </div>
+                  <ChevronRight className="h-4 w-4 text-muted-foreground group-hover:text-primary transition-all group-hover:translate-x-1" />
+                </Link>
+              ))}
+              
+              {recent.notes.length === 0 && (
+                <p className="text-xs text-muted-foreground italic px-2">No wisdom captured yet.</p>
+              )}
+            </div>
+
+            <Button asChild variant="ghost" className="w-full h-10 text-[10px] font-bold uppercase tracking-widest text-primary hover:bg-primary/5">
+              <Link href="/dashboard/notes">Access All Records <ArrowRight className="h-3 w-3 ml-2" /></Link>
+            </Button>
+         </div>
       </div>
     </div>
   )
