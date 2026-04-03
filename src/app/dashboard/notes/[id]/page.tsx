@@ -29,9 +29,5 @@ export default async function EditNotePage(props: {
     }
   }
 
-  return (
-    <div className="pt-8">
-      <NoteEditor initialData={note} />
-    </div>
-  )
+  return <NoteEditor initialData={note} />
 }
