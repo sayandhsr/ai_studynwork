@@ -3,57 +3,57 @@
 import { LucideIcon } from "lucide-react";
 import { motion } from "framer-motion";
 import { CountUp } from "./count-up";
+import { cn } from "@/lib/utils";
 
 interface StatCardProps {
   label: string;
   value: number;
   icon: LucideIcon;
+  description?: string;
   trend?: {
     value: number;
     isUp: boolean;
   };
 }
 
-export function StatCard({ label, value, icon: Icon, trend }: StatCardProps) {
+export function StatCard({ label, value, icon: Icon, description, trend }: StatCardProps) {
   return (
     <motion.div
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      whileHover={{ y: -8, scale: 1.02 }}
-      transition={{ duration: 0.3, ease: "easeOut" }}
-      className="glass-card p-8 group relative overflow-hidden"
+      variants={{
+        hidden: { opacity: 0, y: 20 },
+        show: { opacity: 1, y: 0 }
+      }}
+      className="card-premium p-6 group relative overflow-hidden"
     >
-      <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
-      <div className="absolute top-0 right-0 p-4 opacity-5 group-hover:opacity-10 group-hover:rotate-12 transition-all duration-500">
-        <Icon className="w-24 h-24" />
-      </div>
-      
-      <div className="flex flex-row items-center justify-between pb-4">
-        <span className="text-[10px] font-bold uppercase tracking-[0.3em] text-[#9CA3AF] group-hover:text-primary transition-all">
-          {label}
-        </span>
-        <Icon className="h-4 w-4 text-primary opacity-50 group-hover:opacity-100 transition-all" />
-      </div>
-      
-      <div className="flex items-baseline gap-4">
-        <div className="text-5xl font-heading tracking-tighter text-foreground">
-          <CountUp value={value} />
-        </div>
-        {trend && (
-          <div className={`text-[10px] font-bold ${trend.isUp ? 'text-emerald-500' : 'text-rose-500'} flex items-center gap-1`}>
-            {trend.isUp ? '↑' : '↓'} {trend.value}%
+      <div className="flex items-start justify-between">
+        <div className="space-y-1">
+          <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground group-hover:text-primary transition-colors">
+            {label}
+          </p>
+          <div className="flex items-baseline gap-2">
+            <h2 className="text-3xl font-bold tracking-tight text-foreground">
+              <CountUp value={value} />
+            </h2>
+            {trend && (
+              <span className={cn(
+                "text-[10px] font-bold px-1.5 py-0.5 rounded-full",
+                trend.isUp ? "bg-emerald-500/10 text-emerald-500" : "bg-rose-500/10 text-rose-500"
+              )}>
+                {trend.isUp ? "+" : "-"}{trend.value}%
+              </span>
+            )}
           </div>
-        )}
+          {description && (
+            <p className="text-[10px] text-muted-foreground font-medium">{description}</p>
+          )}
+        </div>
+        <div className="p-2.5 rounded-xl bg-accent/50 text-muted-foreground group-hover:text-primary group-hover:bg-primary/10 transition-all duration-300">
+          <Icon className="h-5 w-5" />
+        </div>
       </div>
       
-      <div className="mt-4 h-1 w-full bg-primary/5 overflow-hidden">
-        <motion.div 
-          className="h-full bg-primary/40"
-          initial={{ width: 0 }}
-          animate={{ width: "60%" }}
-          transition={{ duration: 1, delay: 0.5 }}
-        />
-      </div>
+      {/* Decorative Shimmer on Hover */}
+      <div className="absolute inset-0 pointer-events-none bg-gradient-to-r from-transparent via-primary/5 to-transparent -translate-x-full group-hover:animate-[shimmer_2s_infinite] transition-transform" />
     </motion.div>
   );
 }
