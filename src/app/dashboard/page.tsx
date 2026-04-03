@@ -4,7 +4,6 @@ import { FileText, Youtube, Briefcase, Plus, Clock, ArrowRight } from "lucide-re
 import Link from "next/link"
 import { StatCard } from "@/components/dashboard/stat-card"
 import { AnalyticsCharts } from "./analytics-charts"
-import { ScrollReveal } from "@/components/reveal"
 
 export default async function DashboardPage() {
   const supabase = await createClient()
