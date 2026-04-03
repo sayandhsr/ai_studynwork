@@ -82,12 +82,6 @@ export function TopNav({ user }: TopNavProps) {
               <UserIcon className="mr-2.5 h-4 w-4 opacity-50" />
               <span>Identity Profile</span>
             </DropdownMenuItem>
-            <DropdownMenuItem asChild className="h-10 px-3 rounded-lg text-sm text-muted-foreground hover:text-foreground hover:bg-accent cursor-pointer transition-colors">
-              <Link href="/dashboard/preferences" className="flex items-center w-full">
-                <Settings className="mr-2.5 h-4 w-4 opacity-50" />
-                <span>System Preferences</span>
-              </Link>
-            </DropdownMenuItem>
             <DropdownMenuSeparator className="bg-border/50" />
             <DropdownMenuItem onClick={handleSignOut} className="h-10 px-3 rounded-lg text-sm text-destructive hover:bg-destructive/10 cursor-pointer transition-colors font-medium">
               <LogOut className="mr-2.5 h-4 w-4" />

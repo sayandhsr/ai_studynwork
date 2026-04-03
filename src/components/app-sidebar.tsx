@@ -28,11 +28,6 @@ import { motion } from "framer-motion"
 
 const navItems = [
   {
-    title: "Dashboard",
-    url: "/dashboard",
-    icon: LayoutDashboard,
-  },
-  {
     title: "Notes Saver",
     url: "/dashboard/notes",
     icon: FileText,
@@ -61,7 +56,7 @@ export function AppSidebar() {
   return (
     <Sidebar collapsible="icon" className="border-r border-border bg-sidebar selection:bg-primary/10">
       <SidebarHeader className="h-16 flex items-center px-4 border-b border-border/50">
-        <Link href="/dashboard" className="flex items-center gap-3 transition-opacity hover:opacity-80">
+        <Link href="/dashboard/notes" className="flex items-center gap-3 transition-opacity hover:opacity-80">
           <div className="flex h-8 w-8 items-center justify-center bg-primary rounded-lg text-primary-foreground">
             <Cloud className="w-5 h-5" />
           </div>
@@ -108,18 +103,6 @@ export function AppSidebar() {
         </SidebarGroup>
       </SidebarContent>
 
-      <SidebarFooter className="p-4 border-t border-border/50">
-        <SidebarMenu>
-          <SidebarMenuItem>
-            <SidebarMenuButton asChild className="h-10 rounded-md text-muted-foreground hover:text-foreground group/pref">
-              <Link href="/dashboard/preferences" className="flex items-center w-full">
-                <Settings className="h-4 w-4 mr-3 group-hover/pref:text-primary transition-colors" />
-                <span className="text-sm font-medium">Preferences</span>
-              </Link>
-            </SidebarMenuButton>
-          </SidebarMenuItem>
-        </SidebarMenu>
-      </SidebarFooter>
     </Sidebar>
   )
 }
