@@ -80,29 +80,29 @@
 }
 
 .light {
-  /* CLASSIC LIGHT (Previous Warm Cream) */
+  /* REFINED CREAMY LIGHT (Premium Sanctuary) */
   --background: #FDFBF7;
-  --foreground: #1c1917;
-  --card: #ffffff;
-  --card-foreground: #1c1917;
-  --popover: #ffffff;
-  --popover-foreground: #1c1917;
-  --primary: #2D2A26;
-  --primary-foreground: #fafaf9;
+  --foreground: #2D2A26;
+  --card: #FFFFFF;
+  --card-foreground: #2D2A26;
+  --popover: #FFFFFF;
+  --popover-foreground: #2D2A26;
+  --primary: #C5A059;
+  --primary-foreground: #FFFFFF;
   --secondary: #F5F1EB;
-  --secondary-foreground: #1c1917;
+  --secondary-foreground: #2D2A26;
   --muted: #F5F1EB;
-  --muted-foreground: #6B7280;
-  --accent: #6B7280;
-  --accent-foreground: #ffffff;
-  --destructive: #ef4444;
-  --destructive-foreground: #fafaf9;
+  --muted-foreground: #7C7267;
+  --accent: #F5F1EB;
+  --accent-foreground: #C5A059;
+  --destructive: #991b1b;
+  --destructive-foreground: #FDFBF7;
   --border: #E8E2D9;
   --input: #E8E2D9;
-  --ring: #2D2A26;
-  --radius: 0.75rem;
+  --ring: #C5A059;
+  --radius: 0rem;
   --sidebar: #FDFBF7;
-  --sidebar-foreground: #1c1917;
+  --sidebar-foreground: #2D2A26;
 }
 
 .dark {

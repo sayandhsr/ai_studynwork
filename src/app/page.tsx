@@ -35,16 +35,16 @@ export default function LandingPage() {
   };
 
   return (
-    <div className="min-h-screen bg-background text-foreground overflow-x-hidden font-serif selection:bg-primary/20 bg-black">
+    <div className="min-h-screen bg-background text-foreground overflow-x-hidden font-serif selection:bg-primary/20">
       {/* Navigation */}
-      <nav className="flex items-center justify-between px-6 md:px-12 py-8 max-w-7xl mx-auto border-b border-primary/10">
+      <nav className="flex items-center justify-between px-6 md:px-12 py-8 max-w-7xl mx-auto border-b border-border/10">
         <div className="flex items-center gap-4">
           <div className="w-10 h-10 md:w-12 md:h-12 relative group">
             <div className="absolute inset-0 bg-primary/20 blur-xl group-hover:bg-primary/40 transition-all rounded-full" />
             <BirdLogo className="w-full h-full text-primary relative transition-transform duration-700 group-hover:-rotate-12" />
           </div>
           <div className="flex flex-col leading-tight">
-            <span className="text-[10px] font-bold tracking-[0.3em] uppercase opacity-40 text-foreground">AI Productivity</span>
+            <span className="text-[10px] font-bold tracking-[0.3em] uppercase opacity-40">AI Productivity</span>
             <span className="text-lg md:text-xl font-heading tracking-tight italic text-primary">Hub & Sanctuary</span>
           </div>
         </div>
@@ -54,7 +54,7 @@ export default function LandingPage() {
           </div>
           <Button 
             variant="ghost" 
-            className="rounded-none px-4 md:px-8 py-6 border-b border-transparent hover:border-primary hover:bg-transparent transition-all uppercase tracking-widest text-[10px] font-bold text-foreground/60 hover:text-primary"
+            className="rounded-none px-4 md:px-8 py-6 border-b border-transparent hover:border-primary hover:bg-transparent transition-all uppercase tracking-widest text-[10px] font-bold opacity-60 hover:opacity-100 text-foreground hover:text-primary"
             onClick={handleGoogleLogin}
           >
             Authenticate
@@ -110,14 +110,14 @@ export default function LandingPage() {
           transition={{ duration: 1.5, delay: 0.4 }}
         >
           <div className="absolute -inset-20 bg-primary/5 blur-[120px] rounded-full pointer-events-none" />
-          <div className="relative overflow-hidden border border-primary/10 shadow-[0_64px_120px_-32px_rgba(0,0,0,0.8)] bg-black">
+          <div className="relative overflow-hidden border border-border/20 shadow-2xl bg-card">
             <img 
               src="/images/human_hero.png" 
               alt="Luxury Sanctuary" 
               className="w-full h-auto grayscale-[0.6] hover:grayscale-0 transition-all duration-[3000ms] ease-out scale-105 hover:scale-100 opacity-90"
             />
             {/* Elegant overlay for mobile/desktop transition */}
-            <div className="absolute inset-0 bg-gradient-to-t from-black via-transparent to-transparent opacity-60" />
+            <div className="absolute inset-0 bg-gradient-to-t from-background/80 via-transparent to-transparent opacity-60" />
           </div>
         </motion.div>
       </section>
@@ -138,9 +138,9 @@ export default function LandingPage() {
               initial={{ opacity: 0, y: 40 }}
               viewport={{ once: true }}
             >
-              <div className="relative aspect-[4/5] overflow-hidden border border-primary/10 hover:shadow-2xl transition-all duration-1000 shadow-xl shadow-black/40">
+              <div className="relative aspect-[4/5] overflow-hidden border border-border/20 hover:shadow-2xl transition-all duration-1000 shadow-xl">
                 <img src="/images/human_yt.png" alt="Visual Scribe" className="w-full h-full object-cover grayscale-[0.5] group-hover:grayscale-0 transition-all duration-[2000ms] scale-110 group-hover:scale-100" />
-                <div className="absolute inset-0 bg-black/40 group-hover:bg-transparent transition-colors duration-1000" />
+                <div className="absolute inset-0 bg-foreground/10 group-hover:bg-transparent transition-colors duration-1000" />
               </div>
               <div className="space-y-8 px-4">
                 <div className="space-y-2">
@@ -153,7 +153,7 @@ export default function LandingPage() {
                 <div className="h-px w-24 bg-primary/20 lg:mx-0 mx-auto" />
               </div>
             </motion.div>
-
+ 
             {/* Feature 2 */}
             <motion.div 
               className="space-y-12 text-center lg:text-left group pt-20 lg:pt-48"
@@ -161,9 +161,9 @@ export default function LandingPage() {
               initial={{ opacity: 0, y: 40 }}
               viewport={{ once: true }}
             >
-              <div className="relative aspect-[4/5] overflow-hidden border border-primary/10 hover:shadow-2xl transition-all duration-1000 shadow-xl shadow-black/40">
+              <div className="relative aspect-[4/5] overflow-hidden border border-border/20 hover:shadow-2xl transition-all duration-1000 shadow-xl">
                  <img src="/images/human_hero.png" alt="Observation Vault" className="w-full h-full object-cover grayscale-[0.5] group-hover:grayscale-0 transition-all duration-[2000ms] rotate-1 group-hover:rotate-0 scale-110 group-hover:scale-100" />
-                 <div className="absolute inset-0 bg-black/40 group-hover:bg-transparent transition-colors duration-1000" />
+                 <div className="absolute inset-0 bg-foreground/10 group-hover:bg-transparent transition-colors duration-1000" />
               </div>
               <div className="space-y-8 px-4">
                 <div className="space-y-2">
@@ -195,7 +195,7 @@ export default function LandingPage() {
           <a href="#" className="hover:text-primary transition-colors">Origins</a>
         </div>
 
-        <div className="pt-20 border-t border-primary/10 text-[10px] tracking-[0.3em] uppercase opacity-30 font-bold max-w-2xl mx-auto leading-relaxed">
+        <div className="pt-20 border-t border-border/20 text-[10px] tracking-[0.3em] uppercase opacity-30 font-bold max-w-2xl mx-auto leading-relaxed">
           <span>&copy; 2026 SANCTUARY HUB. CRAFTED FOR THE INTENTIONAL MIND. ALL RIGHTS RESERVED.</span>
         </div>
       </footer>

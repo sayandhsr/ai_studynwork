@@ -49,14 +49,20 @@ export async function updateSession(request: NextRequest) {
   // supabase.auth.getUser(). A simple mistake could make it very hard to debug
   // issues with users being randomly logged out.
   let user = null;
-  try {
-    const { data: { user: foundUser } } = await Promise.race([
-      supabase.auth.getUser(),
-      new Promise((_, reject) => setTimeout(() => reject(new Error('Auth timeout')), 3000))
-    ]) as any;
-    user = foundUser;
-  } catch (err: any) {
-    // Silently fail or log to a proper logging service in production
+  const skipAuthCheck = request.cookies.get('supabase-auth-skip')?.value === 'true';
+
+  if (!skipAuthCheck) {
+    try {
+      const { data: { user: foundUser } } = await Promise.race([
+        supabase.auth.getUser(),
+        new Promise((_, reject) => setTimeout(() => reject(new Error('Auth timeout')), 1500))
+      ]) as any;
+      user = foundUser;
+    } catch (err: any) {
+      console.error(">>> [MIDDLEWARE] AUTH TIMEOUT/FAIL, SETTING SKIP COOKIE");
+      // If it times out, set a cookie to skip check for 5 mins to speed up the site
+      supabaseResponse.cookies.set('supabase-auth-skip', 'true', { maxAge: 300, path: '/' });
+    }
   }
 
   // Array of public routes that don't require authentication
