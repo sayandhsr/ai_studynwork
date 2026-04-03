@@ -13,8 +13,9 @@ import {
 } from "@/components/ui/dropdown-menu"
 import { ThemeToggle } from "./theme-toggle"
 import { SidebarTrigger } from "@/components/ui/sidebar"
-import { LogOut, User as UserIcon, Settings } from "lucide-react"
+import { LogOut, User as UserIcon, Settings, Bell } from "lucide-react"
 import { useRouter } from "next/navigation"
+import { motion } from "framer-motion"
 
 interface TopNavProps {
   user: {
@@ -39,50 +40,62 @@ export function TopNav({ user }: TopNavProps) {
     : user?.email?.substring(0, 2).toUpperCase() || "U"
 
   return (
-    <header className="sticky top-0 z-40 flex h-14 shrink-0 items-center justify-between gap-2 border-b border-yellow-500/10 bg-[#0B0F14]/80 backdrop-blur-xl px-4 md:px-6">
+    <motion.header 
+      initial={{ y: -20, opacity: 0 }}
+      animate={{ y: 0, opacity: 1 }}
+      className="sticky top-0 z-40 flex h-16 shrink-0 items-center justify-between gap-2 border-b border-border/60 bg-background/80 backdrop-blur-md px-4 md:px-8"
+    >
       <div className="flex items-center gap-4">
         <SidebarTrigger className="md:hidden" />
         <div className="flex items-center gap-2">
-          <span className="text-sm font-semibold text-white">Sanctuary</span>
-          <div className="h-3 w-[1px] bg-yellow-500/20 mx-1" />
-          <span className="text-[10px] font-medium tracking-wider uppercase text-gray-500">Workspace</span>
+          <span className="text-sm font-bold text-foreground">Sanctuary</span>
+          <div className="h-4 w-[1px] bg-border mx-1" />
+          <span className="text-[10px] font-bold tracking-widest uppercase text-muted-foreground/60">Workspace</span>
         </div>
       </div>
       
-      <div className="flex items-center gap-4">
+      <div className="flex items-center gap-2 md:gap-4">
+        <Button variant="ghost" size="icon" className="h-9 w-9 text-muted-foreground hover:text-primary transition-colors hidden sm:flex">
+          <Bell className="h-4 w-4" />
+        </Button>
         <ThemeToggle />
         
+        <div className="h-6 w-[1px] bg-border mx-1 hidden sm:block" />
+
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button variant="ghost" size="icon" className="rounded-md hover:bg-yellow-500/10 border border-yellow-500/5 h-9 w-9">
-              <Avatar className="h-7 w-7 rounded-md">
+            <Button variant="ghost" className="relative h-9 flex items-center gap-2 px-2 hover:bg-accent rounded-full transition-all">
+              <Avatar className="h-7 w-7 border border-border shadow-sm">
                 <AvatarImage src={user?.avatar_url || ""} alt={user?.name || "User"} />
-                <AvatarFallback className="bg-yellow-500/10 text-yellow-500 text-xs font-semibold">{initials}</AvatarFallback>
+                <AvatarFallback className="bg-primary/10 text-primary text-[10px] font-bold">{initials}</AvatarFallback>
               </Avatar>
+              <span className="hidden md:inline-block text-xs font-semibold pr-1">{user?.name?.split(" ")[0] || "User"}</span>
             </Button>
           </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="rounded-md border-yellow-500/20 bg-[#0a0a0a] backdrop-blur-xl shadow-xl min-w-[200px] p-1.5">
-            <div className="px-2 py-2">
-              <p className="text-sm font-semibold text-white">{user?.name || "User"}</p>
-              <p className="text-[10px] text-gray-500 truncate">{user?.email}</p>
-            </div>
-            <DropdownMenuSeparator className="bg-yellow-500/10" />
-            <DropdownMenuItem className="h-9 px-2 rounded-sm text-sm text-gray-400 hover:text-white hover:bg-yellow-500/10 cursor-pointer transition-colors">
-              <UserIcon className="mr-2.5 h-4 w-4" />
-              <span>Profile Settings</span>
+          <DropdownMenuContent align="end" className="w-56 mt-2 p-1.5 rounded-xl border-border bg-popover shadow-2xl animate-in fade-in zoom-in-95 duration-200">
+            <DropdownMenuLabel className="px-3 py-2.5">
+              <div className="flex flex-col space-y-1">
+                <p className="text-sm font-bold text-foreground">{user?.name || "User"}</p>
+                <p className="text-[10px] text-muted-foreground font-medium truncate">{user?.email}</p>
+              </div>
+            </DropdownMenuLabel>
+            <DropdownMenuSeparator className="bg-border/50" />
+            <DropdownMenuItem className="h-10 px-3 rounded-lg text-sm text-muted-foreground hover:text-foreground hover:bg-accent cursor-pointer transition-colors">
+              <UserIcon className="mr-2.5 h-4 w-4 opacity-50" />
+              <span>Identity Profile</span>
             </DropdownMenuItem>
-            <DropdownMenuItem className="h-9 px-2 rounded-sm text-sm text-gray-400 hover:text-white hover:bg-yellow-500/10 cursor-pointer transition-colors">
-              <Settings className="mr-2.5 h-4 w-4" />
-              <span>Preferences</span>
+            <DropdownMenuItem className="h-10 px-3 rounded-lg text-sm text-muted-foreground hover:text-foreground hover:bg-accent cursor-pointer transition-colors">
+              <Settings className="mr-2.5 h-4 w-4 opacity-50" />
+              <span>System Preferences</span>
             </DropdownMenuItem>
-            <DropdownMenuSeparator className="bg-yellow-500/10" />
-            <DropdownMenuItem onClick={handleSignOut} className="h-9 px-2 rounded-sm text-sm text-red-400 hover:text-red-300 hover:bg-red-500/10 cursor-pointer transition-colors">
+            <DropdownMenuSeparator className="bg-border/50" />
+            <DropdownMenuItem onClick={handleSignOut} className="h-10 px-3 rounded-lg text-sm text-destructive hover:bg-destructive/10 cursor-pointer transition-colors font-medium">
               <LogOut className="mr-2.5 h-4 w-4" />
-              <span>Sign Out</span>
+              <span>Depart Sanctuary</span>
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
       </div>
-    </header>
+    </motion.header>
   )
 }
