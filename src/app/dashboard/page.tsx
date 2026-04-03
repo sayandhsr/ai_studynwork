@@ -1,6 +1,6 @@
 import { createClient } from "@/lib/supabase/server"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { FileText, Youtube, Briefcase, FileEdit, Sparkles, Plus, Clock, ArrowRight } from "lucide-react"
+import { FileText, Youtube, Briefcase, Sparkles, Plus, Clock, ArrowRight } from "lucide-react"
 import Link from "next/link"
 import { StatCard } from "@/components/dashboard/stat-card"
 import { AnalyticsCharts } from "./analytics-charts"
@@ -20,13 +20,11 @@ export default async function DashboardPage() {
   const [
     { count: notesCount },
     { count: ytCount },
-    { count: jobsCount },
-    { count: resumesCount }
+    { count: jobsCount }
   ] = await Promise.all([
     supabase.from('notes').select('*', { count: 'exact', head: true }),
     supabase.from('yt_summaries').select('*', { count: 'exact', head: true }),
-    supabase.from('saved_jobs').select('*', { count: 'exact', head: true }),
-    supabase.from('resumes').select('*', { count: 'exact', head: true })
+    supabase.from('saved_jobs').select('*', { count: 'exact', head: true })
   ])
 
   // Fetch recent activity
@@ -73,11 +71,10 @@ export default async function DashboardPage() {
       </div>
 
       {/* Stats Grid - Premium Animated Cards */}
-      <div className="grid gap-8 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="grid gap-8 sm:grid-cols-2 lg:grid-cols-3">
         <StatCard label="Wisdom Notes" value={notesCount || 0} icon={FileText} trend={{ value: 12, isUp: true }} />
         <StatCard label="Visual Insights" value={ytCount || 0} icon={Youtube} trend={{ value: 8, isUp: true }} />
         <StatCard label="Strategic Roles" value={jobsCount || 0} icon={Briefcase} trend={{ value: 5, isUp: true }} />
-        <StatCard label="Professional Assets" value={resumesCount || 0} icon={FileEdit} trend={{ value: 2, isUp: true }} />
       </div>
 
       {/* Visual Intelligence Layer */}
@@ -93,10 +90,10 @@ export default async function DashboardPage() {
             { name: 'Sun', notes: 3, summaries: 2 },
           ],
           career: [
-            { name: 'Jan', applications: 12, resumes: 4 },
-            { name: 'Feb', applications: 18, resumes: 7 },
-            { name: 'Mar', applications: 15, resumes: 5 },
-            { name: 'Apr', applications: notesCount || 0, resumes: resumesCount || 0 },
+            { name: 'Jan', applications: 12 },
+            { name: 'Feb', applications: 18 },
+            { name: 'Mar', applications: 15 },
+            { name: 'Apr', applications: jobsCount || 0 },
           ]
         }}
       />

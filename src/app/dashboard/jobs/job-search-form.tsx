@@ -97,11 +97,11 @@ export function JobSearchForm() {
   }
 
   return (
-    <div className="space-y-20 flex flex-col items-center w-full">
-      <div className="glass-card p-1 group relative overflow-hidden w-full max-w-5xl">
-        <div className="p-10 space-y-12">
-          <div className="flex flex-col md:flex-row gap-10 items-start md:items-end justify-between border-b border-border/5 pb-10">
-             <div className="space-y-4">
+    <div className="max-w-5xl mx-auto px-4 mt-6 flex flex-col items-center w-full space-y-8">
+      <div className="bg-black/40 backdrop-blur-xl border border-yellow-500/20 rounded-xl group relative overflow-hidden w-full">
+        <div className="p-6 space-y-6">
+          <div className="flex flex-col md:flex-row gap-4 items-start md:items-end justify-between border-b border-border/5 pb-6">
+             <div className="space-y-2">
                 <span className="text-[10px] font-bold uppercase tracking-[0.5em] text-primary/60 block">Strategic Parameters</span>
                 <h3 className="text-3xl font-heading italic tracking-tight opacity-40">Discovery Configuration</h3>
              </div>
@@ -115,14 +115,14 @@ export function JobSearchForm() {
              </div>
           </div>
 
-          <form onSubmit={handleSearch} className="grid grid-cols-1 md:grid-cols-3 gap-10">
-            <div className="space-y-6">
-              <label className="text-[10px] font-bold uppercase tracking-[0.4em] text-muted">Target Designation</label>
+          <form onSubmit={handleSearch} className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="space-y-2">
+              <label className="text-[10px] font-bold uppercase tracking-[0.4em] text-muted ml-2">Target Designation</label>
               <div className="relative group">
-                <Briefcase className="absolute left-6 top-1/2 -translate-y-1/2 h-5 w-5 text-primary/20 group-focus-within:text-primary transition-colors" />
+                <Briefcase className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-primary/20 group-focus-within:text-primary transition-colors" />
                 <Input 
                   placeholder="e.g. Lead AI Architect" 
-                  className="pl-16 h-16 rounded-none border-border/10 bg-[#0B0F14]/40 italic font-light tracking-wide text-lg selection:bg-primary/20" 
+                  className="pl-12 py-3 h-auto rounded-lg border-yellow-500/10 bg-[#0B0F14]/40 italic font-light tracking-wide text-sm selection:bg-primary/20" 
                   value={role}
                   onChange={(e) => setRole(e.target.value)}
                   disabled={loading}
@@ -130,13 +130,13 @@ export function JobSearchForm() {
               </div>
             </div>
             
-            <div className="space-y-6">
-              <label className="text-[10px] font-bold uppercase tracking-[0.4em] text-muted">Field Location</label>
+            <div className="space-y-2">
+              <label className="text-[10px] font-bold uppercase tracking-[0.4em] text-muted ml-2">Field Location</label>
               <div className="relative group">
-                <MapPin className="absolute left-6 top-1/2 -translate-y-1/2 h-5 w-5 text-primary/20 group-focus-within:text-primary transition-colors" />
+                <MapPin className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-primary/20 group-focus-within:text-primary transition-colors" />
                 <Input 
                   placeholder="e.g. Remote, Europe" 
-                  className="pl-16 h-16 rounded-none border-border/10 bg-[#0B0F14]/40 italic font-light tracking-wide text-lg selection:bg-primary/20"
+                  className="pl-12 py-3 h-auto rounded-lg border-yellow-500/10 bg-[#0B0F14]/40 italic font-light tracking-wide text-sm selection:bg-primary/20"
                   value={location}
                   onChange={(e) => setLocation(e.target.value)}
                   disabled={loading}
@@ -144,13 +144,13 @@ export function JobSearchForm() {
               </div>
             </div>
             
-            <div className="space-y-6">
-              <label className="text-[10px] font-bold uppercase tracking-[0.4em] text-muted">Experience Tier</label>
+            <div className="space-y-2">
+              <label className="text-[10px] font-bold uppercase tracking-[0.4em] text-muted ml-2">Experience Tier</label>
               <Select value={experience} onValueChange={setExperience} disabled={loading}>
-                <SelectTrigger className="h-16 rounded-none border-border/10 bg-[#0B0F14]/40 italic font-light text-lg px-6 selection:bg-primary/20 focus:ring-primary/10">
+                <SelectTrigger className="py-3 h-auto rounded-lg border-yellow-500/10 bg-[#0B0F14]/40 italic font-light text-sm px-4 selection:bg-primary/20 focus:ring-primary/10">
                   <SelectValue placeholder="All Seniorities" />
                 </SelectTrigger>
-                <SelectContent className="rounded-none border-border/10 bg-[#0B0F14]/95 backdrop-blur-xl font-serif">
+                <SelectContent className="rounded-lg border-yellow-500/20 bg-black/60 backdrop-blur-xl font-serif">
                   <SelectItem value="none" className="italic hover:bg-primary/5 transition-colors">Complete Spectrum</SelectItem>
                   <SelectItem value="Entry Level" className="italic hover:bg-primary/5">Sanctuary Entrance</SelectItem>
                   <SelectItem value="Mid Level" className="italic hover:bg-primary/5">Ascension Core</SelectItem>
@@ -160,22 +160,21 @@ export function JobSearchForm() {
               </Select>
             </div>
 
-            <div className="md:col-span-3 pt-6">
-              <Button type="submit" disabled={loading || !role} className="h-24 gap-6 rounded-none bg-primary hover:bg-primary/90 transition-all font-bold uppercase tracking-[0.5em] text-xs relative overflow-hidden group shadow-[0_0_50px_rgba(212,175,55,0.15)] w-full text-primary-foreground">
-                {loading ? <Loader2 className="h-6 w-6 animate-spin" /> : <Search className="h-6 w-6 group-hover:rotate-12 transition-transform" />}
+            <div className="md:col-span-3 pt-4">
+              <Button type="submit" disabled={loading || !role} className="py-3 h-auto gap-2 rounded-lg bg-primary/90 hover:bg-primary transition-all font-bold uppercase tracking-widest text-sm relative overflow-hidden group shadow-[0_0_20px_rgba(212,175,55,0.15)] w-full text-black hover:scale-[1.01]">
+                {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4 group-hover:-rotate-12 transition-transform" />}
                 {loading ? (
-                  <div className="flex flex-col items-start leading-none gap-2">
-                    <span className="text-[12px]">{steps[searchStep]}</span>
-                    <span className="text-[8px] opacity-60">Synchronizing Global Intelligence...</span>
-                  </div>
+                  <span className="flex items-center gap-2">
+                    {steps[searchStep]}
+                  </span>
                 ) : "Execute Discovery"}
-                <div className="absolute inset-0 bg-white/10 opacity-0 group-hover:opacity-100 transition-opacity skew-x-12 translate-x-full group-hover:translate-x-0 duration-1000" />
+                <div className="absolute inset-0 bg-white/10 opacity-0 group-hover:opacity-100 transition-opacity translate-x-full group-hover:translate-x-0 duration-700" />
               </Button>
             </div>
             
             {error && (
-              <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="md:col-span-3 p-6 bg-destructive/5 border border-destructive/20 text-destructive text-[10px] font-bold uppercase tracking-[0.3em] flex items-center gap-4 italic animate-pulse">
-                <History className="h-4 w-4" /> {error}
+              <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="md:col-span-3 p-4 rounded-lg bg-destructive/10 border border-destructive/20 text-destructive text-xs font-bold uppercase tracking-widest flex items-center gap-3 italic">
+                <History className="h-4 w-4 shrink-0" /> <span className="line-clamp-2">{error}</span>
               </motion.div>
             )}
           </form>
@@ -195,48 +194,47 @@ export function JobSearchForm() {
                <div className="h-px flex-1 bg-border/10" />
             </div>
 
-            <div className="grid gap-12 md:grid-cols-2 lg:grid-cols-3 pb-20">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pb-12">
               {results.map((job, i) => (
                 <motion.div 
                   key={i} 
                   initial={{ opacity: 0, scale: 0.98 }}
                   animate={{ opacity: 1, scale: 1 }}
                   transition={{ delay: i * 0.05 }}
-                  className="glass-card p-1 group flex flex-col h-full hover:translate-y-[-8px] transition-all duration-700"
+                  className="bg-black/40 backdrop-blur-xl border border-yellow-500/20 rounded-xl p-6 flex flex-col h-full hover:translate-y-[-4px] hover:shadow-[0_0_20px_rgba(212,175,55,0.15)] transition-all duration-500"
                 >
-                  <div className="p-10 flex flex-col h-full space-y-10">
-                    <div className="space-y-6 text-left">
-                       <span className="text-[9px] font-bold tracking-[0.3em] uppercase text-primary/40 block">Sequence #{i + 1}</span>
-                       <h4 className="font-heading text-2xl italic tracking-tight line-clamp-2 leading-tight group-hover:text-primary transition-colors duration-500">
+                  <div className="flex flex-col h-full space-y-6">
+                    <div className="space-y-4 text-left">
+                       <span className="text-[9px] font-bold tracking-[0.3em] uppercase text-primary/60 block">Sequence #{i + 1}</span>
+                       <h4 className="font-heading text-xl italic tracking-tight line-clamp-2 leading-tight group-hover:text-primary transition-colors duration-500">
                          {job.job_title}
                        </h4>
                     </div>
 
-                    <div className="flex-1 space-y-6">
-                       <div className="flex items-center gap-4 text-base font-light italic opacity-80">
-                         <div className="h-1 w-4 bg-primary/20" />
+                    <div className="flex-1 space-y-4">
+                       <div className="flex items-center gap-3 text-sm font-light italic opacity-90">
+                         <div className="h-1 w-3 bg-primary/40 rounded-full" />
                          <span className="truncate">{job.company}</span>
                        </div>
-                       <div className="flex items-center gap-4 text-sm font-light italic opacity-50">
-                         <MapPin className="h-4 w-4 shrink-0 opacity-40 text-primary" />
+                       <div className="flex items-center gap-3 text-xs font-light italic opacity-60">
+                         <MapPin className="h-3 w-3 shrink-0 opacity-60 text-primary" />
                          <span className="truncate">{job.location}</span>
                        </div>
                     </div>
 
-                    <div className="pt-10 flex gap-4 border-t border-border/5">
+                    <div className="pt-6 flex gap-3 border-t border-yellow-500/10">
                        <Button 
                          variant="ghost" 
-                         className="flex-1 text-[9px] font-bold uppercase tracking-[0.3em] h-14 rounded-none border border-border/5 hover:bg-primary/5 hover:border-primary/20 transition-all text-muted-foreground hover:text-primary"
+                         className="flex-1 text-[10px] font-bold uppercase tracking-widest py-2 h-auto rounded-lg border border-yellow-500/10 hover:bg-primary/10 hover:border-primary/30 transition-all text-muted-foreground hover:text-primary"
                          onClick={() => handleSaveJob(job)}
                          disabled={savingJob === job.apply_link}
                         >
-                         {savingJob === job.apply_link ? <Loader2 className="h-3.5 w-3.5 animate-spin mr-3" /> : <BookmarkPlus className="h-3.5 w-3.5 mr-3" />}
+                         {savingJob === job.apply_link ? <Loader2 className="h-3.5 w-3.5 animate-spin mr-2" /> : <BookmarkPlus className="h-3.5 w-3.5 mr-2" />}
                          CURATE
                        </Button>
-                       <Button className="flex-1 text-[9px] font-bold uppercase tracking-[0.3em] h-14 rounded-none bg-primary hover:bg-primary/90 transition-all text-primary-foreground relative overflow-hidden group shadow-lg" asChild>
-                         <a href={job.apply_link} target="_blank" rel="noreferrer">
-                           EXPLORE <ExternalLink className="h-3.5 w-3.5 ml-3" />
-                           <div className="absolute inset-0 bg-white/10 opacity-0 group-hover:opacity-100 transition-opacity skew-x-12 translate-x-full group-hover:translate-x-0 duration-700" />
+                       <Button className="flex-1 text-[10px] font-bold uppercase tracking-widest py-2 h-auto rounded-lg bg-primary hover:bg-primary/90 transition-all text-black relative overflow-hidden group shadow-md" asChild>
+                         <a href={job.apply_link} target="_blank" rel="noreferrer" className="flex items-center justify-center">
+                           EXPLORE <ExternalLink className="h-3.5 w-3.5 ml-2" />
                          </a>
                        </Button>
                     </div>

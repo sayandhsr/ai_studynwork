@@ -9,7 +9,7 @@ import {
 interface AnalyticsChartsProps {
   data: {
     productivity: { name: string; notes: number; summaries: number }[]
-    career: { name: string; applications: number; resumes: number }[]
+    career: { name: string; applications: number }[]
   }
 }
 
@@ -104,7 +104,6 @@ export function AnalyticsCharts({ data }: AnalyticsChartsProps) {
                   cursor={{ fill: 'rgba(255,215,0,0.05)' }}
                 />
                 <Bar dataKey="applications" fill="var(--primary)" radius={[2, 2, 0, 0]} barSize={20} />
-                <Bar dataKey="resumes" fill="#818cf8" radius={[2, 2, 0, 0]} barSize={20} />
               </BarChart>
             </ResponsiveContainer>
           </div>

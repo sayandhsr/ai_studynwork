@@ -28,11 +28,19 @@ export async function POST(req: Request) {
     })
 
     if (!response.ok) {
-      const errData = await response.json()
+      if (response.status === 403) {
+        throw new Error("API Key exists, but is not subscribed to JSearch on RapidAPI. Please subscribe at rapidapi.com/letscrape-6bRBa3QG1q/api/jsearch.")
+      }
+      const errData = await response.json().catch(() => ({}))
       throw new Error(errData.message || "RapidAPI connection failed")
     }
 
     const data = await response.json()
+    
+    // Handle empty results gracefully
+    if (!data.data || data.data.length === 0) {
+      return NextResponse.json({ jobs: [], warning: "No opportunities matched this exact configuration." })
+    }
     
     // Transform JSearch format to our internal format
     const jobs = data.data.map((job: any) => ({

@@ -19,7 +19,6 @@ import {
   Home,
   Settings,
   Youtube,
-  FileEdit,
   Bot,
   Activity,
   Search
@@ -50,11 +49,6 @@ const navItems = [
     icon: Briefcase,
   },
   {
-    title: "Resume Builder",
-    url: "/dashboard/resume",
-    icon: FileEdit,
-  },
-  {
     title: "AI Assistant",
     url: "/dashboard/assistant",
     icon: Bot,
@@ -82,7 +76,7 @@ export function AppSidebar() {
         <SidebarGroup>
           <SidebarGroupLabel className="px-6 text-[10px] font-bold uppercase tracking-[0.3em] text-muted/40 h-10 flex items-end pb-2">Technical Vault</SidebarGroupLabel>
           <SidebarGroupContent>
-            <SidebarMenu className="px-3 py-4 space-y-2">
+            <SidebarMenu className="px-3 py-2 space-y-1">
               <SidebarMenuItem>
                 <SidebarMenuButton 
                   onClick={() => window.dispatchEvent(new CustomEvent('toggle-command-palette'))}
