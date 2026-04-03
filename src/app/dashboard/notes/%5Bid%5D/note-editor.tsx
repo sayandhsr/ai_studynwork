@@ -10,12 +10,25 @@ import Link from "next/link"
 import { TiptapEditor } from "@/components/notes/editor"
 import { motion } from "framer-motion"
 import { toast } from "sonner"
+import { logActivity } from "@/lib/activity"
+import { 
+  Select, 
+  SelectContent, 
+  SelectItem, 
+  SelectTrigger, 
+  SelectValue 
+} from "@/components/ui/select"
+import { Switch } from "@/components/ui/switch"
+import { Label } from "@/components/ui/label"
+import { Pin, Tag } from "lucide-react"
 
 interface NoteData {
   id?: string
   title: string
   content: string
   tags?: string[]
+  category?: string
+  pinned?: boolean
 }
 
 export function NoteEditor({ initialData }: { initialData?: NoteData | null }) {
@@ -24,6 +37,8 @@ export function NoteEditor({ initialData }: { initialData?: NoteData | null }) {
   
   const [title, setTitle] = useState(initialData?.title || "")
   const [content, setContent] = useState(initialData?.content || "")
+  const [category, setCategory] = useState(initialData?.category || "technical")
+  const [pinned, setPinned] = useState(initialData?.pinned || false)
   const [isSaving, setIsSaving] = useState(false)
   const [isAutoSaving, setIsAutoSaving] = useState(false)
   const [lastSaved, setLastSaved] = useState<Date | null>(initialData?.id ? new Date() : null)
@@ -70,18 +85,27 @@ export function NoteEditor({ initialData }: { initialData?: NoteData | null }) {
       if (isEditing) {
         await supabase
           .from("notes")
-          .update({ title: title || "Untitled Fragment", content })
+          .update({ title: title || "Untitled Fragment", content, category, pinned })
           .eq("id", initialData.id)
+        
+        await logActivity("note_updated", title || "Untitled Fragment")
         toast.success("Fragment preservation complete.")
         router.push("/dashboard/notes")
       } else {
         const { data, error } = await supabase
           .from("notes")
-          .insert([{ user_id: user.id, title: title || "Untitled Fragment", content }])
+          .insert([{ 
+            user_id: user.id, 
+            title: title || "Untitled Fragment", 
+            content,
+            category,
+            pinned
+          }])
           .select()
           .single()
         
         if (error) throw error
+        await logActivity("note_created", title || "Untitled Fragment")
         toast.success("New fragment inscribed.")
         router.push(`/dashboard/notes`)
       }
@@ -135,6 +159,40 @@ export function NoteEditor({ initialData }: { initialData?: NoteData | null }) {
              {isSaving ? <Loader2 className="h-3.5 w-3.5 animate-spin mr-2" /> : <Save className="h-3.5 w-3.5 mr-2" />}
              {isEditing ? "Commit Changes" : "Inscribe Fragment"}
            </Button>
+        </div>
+      </motion.div>
+
+      {/* Metadata Layer */}
+      <motion.div 
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        className="flex flex-wrap items-center gap-6 p-4 rounded-xl border border-border bg-card/40"
+      >
+        <div className="flex items-center gap-3">
+          <Tag className="h-4 w-4 text-primary/60" />
+          <Label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground mr-1">Classification</Label>
+          <Select value={category} onValueChange={setCategory}>
+            <SelectTrigger className="w-[160px] h-9 rounded-lg border-border bg-background text-xs font-semibold">
+              <SelectValue placeholder="Category" />
+            </SelectTrigger>
+            <SelectContent className="rounded-xl border-border">
+              <SelectItem value="technical" className="text-xs font-semibold">Technical</SelectItem>
+              <SelectItem value="reflection" className="text-xs font-semibold">Reflection</SelectItem>
+              <SelectItem value="strategic" className="text-xs font-semibold">Strategic</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+
+        <div className="h-4 w-[1px] bg-border hidden sm:block" />
+
+        <div className="flex items-center gap-3">
+          <Pin className={`h-4 w-4 transition-colors ${pinned ? 'text-primary' : 'text-primary/20'}`} />
+          <Label htmlFor="pinned-mode" className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Prioritize Fragment</Label>
+          <Switch
+            id="pinned-mode"
+            checked={pinned}
+            onCheckedChange={setPinned}
+          />
         </div>
       </motion.div>
 

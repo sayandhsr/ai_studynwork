@@ -12,9 +12,11 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { ThemeToggle } from "./theme-toggle"
+import { NotificationsDropdown } from "./dashboard/notifications-dropdown"
 import { SidebarTrigger } from "@/components/ui/sidebar"
 import { LogOut, User as UserIcon, Settings, Bell } from "lucide-react"
 import { useRouter } from "next/navigation"
+import Link from "next/link"
 import { motion } from "framer-motion"
 
 interface TopNavProps {
@@ -55,9 +57,7 @@ export function TopNav({ user }: TopNavProps) {
       </div>
       
       <div className="flex items-center gap-2 md:gap-4">
-        <Button variant="ghost" size="icon" className="h-9 w-9 text-muted-foreground hover:text-primary transition-colors hidden sm:flex">
-          <Bell className="h-4 w-4" />
-        </Button>
+        <NotificationsDropdown />
         <ThemeToggle />
         
         <div className="h-6 w-[1px] bg-border mx-1 hidden sm:block" />
@@ -84,9 +84,11 @@ export function TopNav({ user }: TopNavProps) {
               <UserIcon className="mr-2.5 h-4 w-4 opacity-50" />
               <span>Identity Profile</span>
             </DropdownMenuItem>
-            <DropdownMenuItem className="h-10 px-3 rounded-lg text-sm text-muted-foreground hover:text-foreground hover:bg-accent cursor-pointer transition-colors">
-              <Settings className="mr-2.5 h-4 w-4 opacity-50" />
-              <span>System Preferences</span>
+            <DropdownMenuItem asChild className="h-10 px-3 rounded-lg text-sm text-muted-foreground hover:text-foreground hover:bg-accent cursor-pointer transition-colors">
+              <Link href="/dashboard/preferences" className="flex items-center w-full">
+                <Settings className="mr-2.5 h-4 w-4 opacity-50" />
+                <span>System Preferences</span>
+              </Link>
             </DropdownMenuItem>
             <DropdownMenuSeparator className="bg-border/50" />
             <DropdownMenuItem onClick={handleSignOut} className="h-10 px-3 rounded-lg text-sm text-destructive hover:bg-destructive/10 cursor-pointer transition-colors font-medium">

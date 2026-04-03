@@ -111,9 +111,11 @@ export function AppSidebar() {
       <SidebarFooter className="p-4 border-t border-border/50">
         <SidebarMenu>
           <SidebarMenuItem>
-            <SidebarMenuButton className="h-10 rounded-md text-muted-foreground hover:text-foreground">
-              <Settings className="h-4 w-4 mr-3" />
-              <span className="text-sm font-medium">Preferences</span>
+            <SidebarMenuButton asChild className="h-10 rounded-md text-muted-foreground hover:text-foreground group/pref">
+              <Link href="/dashboard/preferences" className="flex items-center w-full">
+                <Settings className="h-4 w-4 mr-3 group-hover/pref:text-primary transition-colors" />
+                <span className="text-sm font-medium">Preferences</span>
+              </Link>
             </SidebarMenuButton>
           </SidebarMenuItem>
         </SidebarMenu>

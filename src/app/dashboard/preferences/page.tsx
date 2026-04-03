@@ -2,6 +2,7 @@ import { createClient } from "@/lib/supabase/server"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { ThemeToggle } from "@/components/theme-toggle"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
+import { SettingsActions } from "./settings-actions"
 
 export default async function SettingsPage() {
   const supabase = await createClient()
@@ -59,6 +60,8 @@ export default async function SettingsPage() {
             </div>
           </CardContent>
         </Card>
+
+        <SettingsActions />
       </div>
     </div>
   )

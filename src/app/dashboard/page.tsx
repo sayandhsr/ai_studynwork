@@ -2,12 +2,13 @@ import { createClient } from "@/lib/supabase/server"
 import { 
   FileText, Youtube, Briefcase, Plus, Clock, 
   ArrowUpRight, Zap, Target, BookOpen, Telescope,
-  ArrowRight
+  ArrowRight, Shield, ZapOff, CheckCircle2
 } from "lucide-react"
 import Link from "next/link"
 import { StatCard } from "@/components/dashboard/stat-card"
 import * as motion from "framer-motion/client"
 import { Button } from "@/components/ui/button"
+import { formatDistanceToNow } from "date-fns"
 
 const container = {
   hidden: { opacity: 0 },
@@ -24,25 +25,31 @@ export default async function DashboardPage() {
 
   let user = null
   let stats = { notes: 0, youtube: 0, jobs: 0, research: 0 }
-  let recentNotes: any[] = []
-  let recentJobs: any[] = []
+  let lastActivity: any[] = []
 
   try {
     const { data: authData } = await supabase.auth.getUser()
     user = authData?.user
-  } catch {
-    // Auth failed - render fallback
-  }
+    
+    if (user) {
+      // Parallel fetch for stats and activity
+      const [notesRes, ytRes, jobsRes, logRes] = await Promise.all([
+        supabase.from('notes').select('*', { count: 'exact', head: true }),
+        supabase.from('yt_summaries').select('*', { count: 'exact', head: true }),
+        supabase.from('saved_jobs').select('*', { count: 'exact', head: true }),
+        supabase.from('activity_logs').select('*').order('created_at', { ascending: false }).limit(5)
+      ])
 
-  if (user) {
-    // Fetch each stat independently - never crash if a table doesn't exist
-    try { const { count } = await supabase.from('notes').select('*', { count: 'exact', head: true }); stats.notes = count || 0 } catch {}
-    try { const { count } = await supabase.from('yt_summaries').select('*', { count: 'exact', head: true }); stats.youtube = count || 0 } catch {}
-    try { const { count } = await supabase.from('saved_jobs').select('*', { count: 'exact', head: true }); stats.jobs = count || 0 } catch {}
-
-    // Fetch recent items independently
-    try { const { data } = await supabase.from('notes').select('id, title, created_at').order('created_at', { ascending: false }).limit(3); recentNotes = data || [] } catch {}
-    try { const { data } = await supabase.from('saved_jobs').select('id, job_title, company, created_at').order('created_at', { ascending: false }).limit(3); recentJobs = data || [] } catch {}
+      stats = { 
+        notes: notesRes.count || 0, 
+        youtube: ytRes.count || 0, 
+        jobs: jobsRes.count || 0,
+        research: 0 // Will be added once research table is integrated
+      }
+      lastActivity = logRes.data || []
+    }
+  } catch (err) {
+    console.error("Dashboard data load failure:", err)
   }
 
   if (!user) return null
@@ -54,121 +61,116 @@ export default async function DashboardPage() {
       variants={container}
       initial="hidden"
       animate="show"
-      className="max-w-6xl mx-auto space-y-6"
+      className="max-w-6xl mx-auto space-y-8"
     >
-      {/* Welcome Card */}
-      <motion.div variants={item} className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 p-6 rounded-xl border border-border bg-card shadow-sm">
-        <div className="space-y-1">
-          <h1 className="text-2xl font-bold tracking-tight">Welcome back, <span className="text-primary">{name}</span></h1>
-          <p className="text-sm text-muted-foreground">Your workspace is synced. {stats.notes} notes · {stats.youtube} summaries · {stats.jobs} jobs tracked.</p>
+      {/* Welcome Hero - Production Grade */}
+      <motion.div variants={item} className="relative overflow-hidden p-8 rounded-2xl border border-border bg-card shadow-lg group">
+        <div className="absolute top-0 right-0 p-12 opacity-[0.03] pointer-events-none group-hover:scale-110 transition-transform duration-1000">
+           <Shield className="w-48 h-48" />
         </div>
-        <Button asChild className="h-10 px-5 bg-primary hover:bg-primary/90 text-primary-foreground font-semibold text-xs rounded-lg shadow-md">
-          <Link href="/dashboard/notes/new"><Plus className="h-4 w-4 mr-2" /> New Note</Link>
-        </Button>
-      </motion.div>
-
-      {/* Stats Grid */}
-      <motion.div variants={item} className="grid gap-4 grid-cols-2 md:grid-cols-4">
-        <StatCard label="Notes" value={stats.notes} icon={BookOpen} description="Saved notes" trend={{ value: 0, isUp: true }} />
-        <StatCard label="Summaries" value={stats.youtube} icon={Youtube} description="Videos analyzed" trend={{ value: 0, isUp: true }} />
-        <StatCard label="Jobs Tracked" value={stats.jobs} icon={Target} description="Opportunities" trend={{ value: 0, isUp: true }} />
-        <StatCard label="Research" value={stats.research} icon={Telescope} description="Queries run" trend={{ value: 0, isUp: true }} />
-      </motion.div>
-
-      {/* Quick Actions */}
-      <motion.div variants={item} className="grid gap-3 grid-cols-2 md:grid-cols-4">
-        {[
-          { label: "Create Note", href: "/dashboard/notes/new", icon: FileText, color: "bg-blue-500/10 text-blue-500" },
-          { label: "Summarize Video", href: "/dashboard/youtube", icon: Youtube, color: "bg-red-500/10 text-red-500" },
-          { label: "Start Research", href: "/dashboard/research", icon: Telescope, color: "bg-purple-500/10 text-purple-500" },
-          { label: "Search Jobs", href: "/dashboard/jobs", icon: Briefcase, color: "bg-emerald-500/10 text-emerald-500" },
-        ].map((action) => (
-          <Link
-            key={action.label}
-            href={action.href}
-            className="flex items-center gap-3 p-4 rounded-xl border border-border bg-card hover:border-primary/30 hover:shadow-sm transition-all group"
-          >
-            <div className={`p-2 rounded-lg ${action.color}`}>
-              <action.icon className="h-4 w-4" />
+        <div className="relative z-10 flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
+          <div className="space-y-2">
+            <div className="flex items-center gap-2">
+               <Zap className="h-4 w-4 text-primary fill-primary animate-pulse" />
+               <span className="text-[10px] font-bold uppercase tracking-[0.4em] text-primary/60">System Synchronized</span>
             </div>
-            <span className="text-sm font-semibold group-hover:text-primary transition-colors">{action.label}</span>
-            <ArrowRight className="h-3.5 w-3.5 text-muted-foreground ml-auto opacity-0 group-hover:opacity-100 transition-opacity" />
-          </Link>
-        ))}
+            <h1 className="text-3xl font-bold tracking-tight">Access Granted, <span className="text-primary">{name}</span></h1>
+            <p className="text-sm text-muted-foreground font-medium max-w-lg">
+              Your technical sanctuary is active. You have {stats.notes} fragments inscribed and {stats.jobs} opportunities identified in this session.
+            </p>
+          </div>
+          <div className="flex items-center gap-3 w-full md:w-auto">
+            <Button asChild className="h-11 px-8 bg-primary hover:bg-primary/90 text-primary-foreground font-bold uppercase text-[10px] tracking-widest rounded-xl transition-all hover:scale-105 active:scale-95 shadow-xl shadow-primary/10">
+              <Link href="/dashboard/notes/new"><Plus className="h-4 w-4 mr-2" /> New Inscription</Link>
+            </Button>
+          </div>
+        </div>
       </motion.div>
 
-      {/* Recent Activity + Recent Data */}
-      <div className="grid gap-6 lg:grid-cols-2">
-        {/* Recent Activity */}
-        <motion.div variants={item} className="rounded-xl border border-border bg-card p-6 space-y-4">
+      {/* Primary Intelligence Stats */}
+      <motion.div variants={item} className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
+        <StatCard label="Fragments" value={stats.notes} icon={BookOpen} description="Knowledge Base" />
+        <StatCard label="Syntheses" value={stats.youtube} icon={Youtube} description="Video Intel" />
+        <StatCard label="Identified" value={stats.jobs} icon={Target} description="Career Targets" />
+        <StatCard label="Scrutiny" value={stats.research} icon={Telescope} description="Deep Research" />
+      </motion.div>
+
+      {/* Operational Feed & Controls */}
+      <div className="grid gap-8 lg:grid-cols-3">
+        {/* Activity Feed */}
+        <motion.div variants={item} className="lg:col-span-2 space-y-6">
           <div className="flex items-center justify-between">
-            <h3 className="text-sm font-bold">Recent Activity</h3>
-            <Link href="/dashboard/notes" className="text-[10px] font-bold text-primary hover:underline uppercase tracking-widest">View All</Link>
+            <div className="space-y-1">
+              <h3 className="text-[10px] font-bold uppercase tracking-[0.3em] text-muted-foreground/60">Operational Feed</h3>
+              <p className="text-[9px] font-medium text-muted-foreground/40 uppercase">Real-time action history</p>
+            </div>
+            <Link href="/dashboard/notes" className="text-[10px] font-bold text-primary hover:underline uppercase tracking-widest">Full Ledger</Link>
           </div>
 
-          <div className="space-y-2">
-            {recentNotes.length > 0 ? recentNotes.map((note) => (
-              <Link
-                href={`/dashboard/notes/${note.id}`}
-                key={note.id}
-                className="flex items-center justify-between p-3 rounded-lg hover:bg-accent/50 transition-all group"
-              >
-                <div className="flex items-center gap-3 min-w-0">
-                  <div className="p-2 rounded-lg bg-primary/5 text-primary">
-                    <FileText className="h-3.5 w-3.5" />
+          <div className="grid gap-3">
+            {lastActivity.length > 0 ? lastActivity.map((log) => (
+              <div key={log.id} className="group p-4 rounded-xl border border-border bg-card/60 hover:bg-card hover:border-primary/30 transition-all flex items-center justify-between">
+                <div className="flex items-center gap-4">
+                  <div className={`p-2.5 rounded-lg shrink-0 ${
+                    log.action_type.includes('created') ? 'bg-emerald-500/10 text-emerald-500' :
+                    log.action_type.includes('deleted') ? 'bg-red-500/10 text-red-500' :
+                    'bg-primary/10 text-primary'
+                  }`}>
+                    <ActivityIcon type={log.action_type} />
                   </div>
                   <div className="min-w-0">
-                    <p className="text-sm font-semibold truncate group-hover:text-primary transition-colors">{note.title || "Untitled"}</p>
-                    <p className="text-[10px] text-muted-foreground flex items-center gap-1 mt-0.5">
+                    <p className="text-sm font-bold text-foreground group-hover:text-primary transition-colors truncate">{log.action_title}</p>
+                    <div className="flex items-center gap-2 text-[10px] text-muted-foreground font-medium uppercase mt-0.5">
                       <Clock className="h-3 w-3" />
-                      {timeAgo(note.created_at)}
-                    </p>
+                      <span>{formatDistanceToNow(new Date(log.created_at), { addSuffix: true })}</span>
+                    </div>
                   </div>
                 </div>
-                <ArrowUpRight className="h-3.5 w-3.5 text-muted-foreground opacity-0 group-hover:opacity-100 transition-all shrink-0" />
-              </Link>
+                <ArrowUpRight className="h-4 w-4 text-muted-foreground group-hover:text-primary opacity-0 group-hover:opacity-100 transition-all" />
+              </div>
             )) : (
-              <div className="text-center py-8 text-muted-foreground">
-                <FileText className="h-8 w-8 mx-auto mb-2 opacity-20" />
-                <p className="text-xs">No notes yet. Create your first one!</p>
+              <div className="p-12 rounded-2xl border-2 border-dashed border-border flex flex-col items-center justify-center text-center space-y-4">
+                 <ZapOff className="h-8 w-8 text-muted/20" />
+                 <p className="text-xs text-muted-foreground font-medium max-w-[200px]">The Operational Feed is currently silent. Build your technical legacy.</p>
               </div>
             )}
           </div>
         </motion.div>
 
-        {/* Tracked Jobs Preview */}
-        <motion.div variants={item} className="rounded-xl border border-border bg-card p-6 space-y-4">
-          <div className="flex items-center justify-between">
-            <h3 className="text-sm font-bold">Tracked Jobs</h3>
-            <Link href="/dashboard/jobs" className="text-[10px] font-bold text-primary hover:underline uppercase tracking-widest">Search Jobs</Link>
+        {/* Quick Protocols */}
+        <motion.div variants={item} className="space-y-6">
+          <div className="space-y-1">
+            <h3 className="text-[10px] font-bold uppercase tracking-[0.3em] text-muted-foreground/60">Quick Protocols</h3>
+            <p className="text-[9px] font-medium text-muted-foreground/40 uppercase">Direct access utility</p>
           </div>
 
-          <div className="space-y-2">
-            {recentJobs.length > 0 ? recentJobs.map((job) => (
-              <div
-                key={job.id}
-                className="flex items-center justify-between p-3 rounded-lg hover:bg-accent/50 transition-all"
+          <div className="grid gap-3">
+            {[
+              { label: "New Fragment", href: "/dashboard/notes/new", icon: FileText, color: "text-blue-500", bg: "bg-blue-500/5" },
+              { label: "Scan Video", href: "/dashboard/youtube", icon: Youtube, color: "text-red-500", bg: "bg-red-500/5" },
+              { label: "Intelligence Search", href: "/dashboard/research", icon: Telescope, color: "text-purple-500", bg: "bg-purple-500/5" },
+              { label: "Career Discovery", href: "/dashboard/jobs", icon: Briefcase, color: "text-emerald-500", bg: "bg-emerald-500/5" },
+            ].map((action) => (
+              <Link
+                key={action.label}
+                href={action.href}
+                className="flex items-center gap-3 p-4 rounded-xl border border-border bg-card/60 hover:bg-card hover:border-primary/30 hover:shadow-sm transition-all group"
               >
-                <div className="flex items-center gap-3 min-w-0">
-                  <div className="p-2 rounded-lg bg-emerald-500/5 text-emerald-500">
-                    <Briefcase className="h-3.5 w-3.5" />
-                  </div>
-                  <div className="min-w-0">
-                    <p className="text-sm font-semibold truncate">{job.job_title}</p>
-                    <p className="text-[10px] text-muted-foreground">{job.company}</p>
-                  </div>
+                <div className={`p-2.5 rounded-lg ${action.bg} ${action.color}`}>
+                  <action.icon className="h-4 w-4" />
                 </div>
-                <p className="text-[10px] text-muted-foreground flex items-center gap-1 shrink-0">
-                  <Clock className="h-3 w-3" />
-                  {timeAgo(job.created_at)}
-                </p>
-              </div>
-            )) : (
-              <div className="text-center py-8 text-muted-foreground">
-                <Briefcase className="h-8 w-8 mx-auto mb-2 opacity-20" />
-                <p className="text-xs">No tracked jobs yet. Start searching!</p>
-              </div>
-            )}
+                <span className="text-xs font-bold uppercase tracking-widest group-hover:text-primary transition-colors">{action.label}</span>
+                <ArrowRight className="h-3.5 w-3.5 text-muted-foreground ml-auto opacity-0 group-hover:opacity-100 transition-opacity" />
+              </Link>
+            ))}
+          </div>
+
+          <div className="p-6 rounded-2xl bg-primary/[0.03] border border-primary/10 space-y-4">
+             <div className="flex items-center gap-2">
+                <Shield className="h-4 w-4 text-primary" />
+                <span className="text-[10px] font-bold uppercase tracking-widest text-primary">Security Notice</span>
+             </div>
+             <p className="text-[11px] leading-relaxed text-muted-foreground font-medium">All knowledge fragments and research queries are encrypted and stored in your private sanctuary.</p>
           </div>
         </motion.div>
       </div>
@@ -176,13 +178,7 @@ export default async function DashboardPage() {
   )
 }
 
-function timeAgo(dateStr: string | null) {
-  if (!dateStr) return "just now"
-  const diff = Date.now() - new Date(dateStr).getTime()
-  const m = Math.floor(diff / 60000)
-  if (m < 1) return "just now"
-  if (m < 60) return `${m}m ago`
-  const h = Math.floor(m / 60)
-  if (h < 24) return `${h}h ago`
-  return `${Math.floor(h / 24)}d ago`
+function ActivityIcon({ type }: { type: string }) {
+  if (type.includes('created')) return <CheckCircle2 className="h-4 w-4" />
+  return <Zap className="h-4 w-4" />
 }

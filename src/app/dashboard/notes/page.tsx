@@ -3,10 +3,10 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { 
   Plus, Search, FileText, CalendarDays, MoreVertical, 
-  Tag, Clock, Folder, Filter, ArrowUpRight 
+  Tag, Clock, Folder, Filter, ArrowUpRight, Pin
 } from "lucide-react"
 import Link from "next/link"
-import { formatDistanceToNow } from "date-fns"
+import { formatDistanceToNow, startOfDay, subDays } from "date-fns"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -31,7 +31,7 @@ const item = {
 }
 
 export default async function NotesPage(props: {
-  searchParams: Promise<{ q?: string; tab?: string }>
+  searchParams: Promise<{ q?: string; tab?: string; category?: string }>
 }) {
   const searchParams = await props.searchParams
   const supabase = await createClient()
@@ -41,30 +41,52 @@ export default async function NotesPage(props: {
 
   const query = searchParams.q || ""
   const activeTab = searchParams.tab || "all"
+  const activeCategory = searchParams.category || "all"
   
   let notes = []
   try {
     let notesQuery = supabase
       .from("notes")
       .select("*")
+      .order("pinned", { ascending: false }) // Pinned first
       .order("created_at", { ascending: false })
 
+    // Apply search query
     if (query) {
       notesQuery = notesQuery.ilike("title", `%${query}%`)
     }
 
-    const { data } = await notesQuery
+    // Apply category filter
+    if (activeCategory === "pinned") {
+      notesQuery = notesQuery.eq("pinned", true)
+    } else if (activeCategory !== "all") {
+      notesQuery = notesQuery.eq("category", activeCategory.toLowerCase())
+    }
+
+    // Apply time filter
+    const now = new Date()
+    if (activeTab === "today") {
+      notesQuery = notesQuery.gte("created_at", startOfDay(now).toISOString())
+    } else if (activeTab === "week") {
+      notesQuery = notesQuery.gte("created_at", subDays(now, 7).toISOString())
+    } else if (activeTab === "historical") {
+      notesQuery = notesQuery.lt("created_at", subDays(now, 7).toISOString())
+    }
+
+    const { data, error } = await notesQuery
+    if (error) throw error
     notes = data || []
     
-    // Simple mock category data for the UI
-    const folders = [
-      { name: "Technical", count: 12, icon: Folder, color: "text-blue-500" },
-      { name: "Strategic", count: 5, icon: Target, color: "text-amber-500" },
-      { name: "Personal", count: 8, icon: User, color: "text-purple-500" },
-    ]
   } catch (err) {
-    console.error("Notes error", err)
+    console.error("Notes listing error", err)
   }
+
+  const categoryOptions = [
+    { name: "all", label: "All Records", icon: FileText },
+    { name: "technical", label: "Technical", icon: Folder },
+    { name: "reflection", label: "Reflections", icon: Clock },
+    { name: "pinned", label: "Pinned", icon: Pin },
+  ]
 
   return (
     <div className="max-w-6xl mx-auto px-4 py-8 space-y-8">
@@ -100,41 +122,47 @@ export default async function NotesPage(props: {
 
       {/* Categories / Folders - Horizontal Scroll */}
       <div className="flex items-center gap-4 overflow-x-auto pb-4 scrollbar-hide">
-        {[
-          { name: "All Records", icon: FileText, active: true },
-          { name: "Technical", icon: Folder, active: false },
-          { name: "Reflections", icon: Clock, active: false },
-          { name: "Pinned", icon: Tag, active: false },
-        ].map((folder) => (
-          <button 
-            key={folder.name}
+        {categoryOptions.map((cat) => (
+          <Link 
+            key={cat.name}
+            href={`/dashboard/notes?tab=${activeTab}&category=${cat.name}${query ? `&q=${query}` : ''}`}
             className={`flex items-center gap-3 px-5 py-3 rounded-xl border transition-all whitespace-nowrap ${
-              folder.active 
+              activeCategory === cat.name 
               ? "bg-primary/10 border-primary text-primary font-bold shadow-sm" 
               : "bg-card border-border text-muted-foreground hover:border-primary/30 hover:text-foreground"
             }`}
           >
-            <folder.icon className="h-4 w-4" />
-            <span className="text-xs">{folder.name}</span>
-          </button>
+            <cat.icon className={`h-4 w-4 ${cat.name === 'pinned' && activeCategory === 'pinned' ? 'fill-primary' : ''}`} />
+            <span className="text-xs uppercase tracking-widest">{cat.label}</span>
+          </Link>
         ))}
       </div>
 
       {/* Main Tabs and Grid */}
-      <Tabs defaultValue="all" className="space-y-8">
+      <Tabs defaultValue={activeTab} className="space-y-8">
         <div className="flex items-center justify-between">
           <TabsList className="bg-muted/50 p-1 rounded-xl h-10">
-            <TabsTrigger value="all" className="rounded-lg px-4 text-[10px] font-bold uppercase tracking-wider">Historical</TabsTrigger>
-            <TabsTrigger value="today" className="rounded-lg px-4 text-[10px] font-bold uppercase tracking-wider">Today</TabsTrigger>
-            <TabsTrigger value="week" className="rounded-lg px-4 text-[10px] font-bold uppercase tracking-wider">This Week</TabsTrigger>
+            <Link href={`/dashboard/notes?tab=all&category=${activeCategory}${query ? `&q=${query}` : ''}`}>
+              <TabsTrigger value="all" className="rounded-lg px-4 text-[10px] font-bold uppercase tracking-wider">All Time</TabsTrigger>
+            </Link>
+            <Link href={`/dashboard/notes?tab=today&category=${activeCategory}${query ? `&q=${query}` : ''}`}>
+              <TabsTrigger value="today" className="rounded-lg px-4 text-[10px] font-bold uppercase tracking-wider">Today</TabsTrigger>
+            </Link>
+            <Link href={`/dashboard/notes?tab=week&category=${activeCategory}${query ? `&q=${query}` : ''}`}>
+              <TabsTrigger value="week" className="rounded-lg px-4 text-[10px] font-bold uppercase tracking-wider">This Week</TabsTrigger>
+            </Link>
+            <Link href={`/dashboard/notes?tab=historical&category=${activeCategory}${query ? `&q=${query}` : ''}`}>
+              <TabsTrigger value="historical" className="rounded-lg px-4 text-[10px] font-bold uppercase tracking-wider">Historical</TabsTrigger>
+            </Link>
           </TabsList>
           
-          <Button variant="ghost" size="sm" className="h-10 text-[10px] font-bold uppercase text-muted-foreground hover:text-primary">
-            <Filter className="h-3.5 w-3.5 mr-2" /> Collections
-          </Button>
+          <div className="hidden sm:flex items-center gap-2 text-[10px] font-bold uppercase text-muted-foreground/60">
+            <Filter className="h-3 w-3" />
+            <span>{notes.length} Fragments Identified</span>
+          </div>
         </div>
 
-        <TabsContent value="all">
+        <TabsContent value={activeTab} className="mt-0">
           {notes.length > 0 ? (
             <motion.div 
               variants={container}
@@ -146,39 +174,57 @@ export default async function NotesPage(props: {
                 <motion.div 
                   key={note.id} 
                   variants={item}
-                  className="group p-6 rounded-2xl border border-border bg-card/60 hover:bg-card hover:border-primary/40 transition-all flex flex-col h-full shadow-sm relative overflow-hidden"
+                  className={`group p-6 rounded-2xl border transition-all flex flex-col h-full shadow-sm relative overflow-hidden ${
+                    note.pinned 
+                      ? "border-primary/40 bg-primary/[0.02]" 
+                      : "border-border bg-card/60 hover:bg-card hover:border-primary/40"
+                  }`}
                 >
+                  {note.pinned && (
+                    <div className="absolute top-4 right-4">
+                      <Pin className="h-3 w-3 text-primary fill-primary animate-pulse" />
+                    </div>
+                  )}
+                  
                   <div className="flex-1 space-y-4 relative z-10">
-                    <div className="flex items-start justify-between">
-                       <Link href={`/dashboard/notes/${note.id}`} className="flex-1 min-w-0 pr-4">
+                    <div className="flex items-start justify-between pr-8">
+                       <Link href={`/dashboard/notes/${note.id}`} className="flex-1 min-w-0">
                          <h4 className="text-lg font-bold text-foreground group-hover:text-primary transition-colors line-clamp-2 leading-tight">
                            {note.title || "Untitled Fragment"}
                          </h4>
-                         <div className="flex items-center gap-2 mt-2">
-                           <div className="flex items-center gap-1 text-[9px] font-bold uppercase tracking-widest text-muted-foreground/60">
+                         <div className="flex flex-wrap items-center gap-3 mt-3">
+                           <div className="flex items-center gap-1.5 text-[9px] font-bold uppercase tracking-widest text-muted-foreground/60">
                              <CalendarDays className="h-3 w-3 text-primary/40" />
                              {formatDistanceToNow(new Date(note.created_at), { addSuffix: true })}
                            </div>
+                           {note.category && (
+                             <div className="flex items-center gap-1.5 text-[9px] font-bold uppercase tracking-widest text-primary/60 bg-primary/5 px-2 py-0.5 rounded">
+                               <Tag className="h-3 w-3" />
+                               {note.category}
+                             </div>
+                           )}
                          </div>
                        </Link>
-                       <DropdownMenu>
-                         <DropdownMenuTrigger asChild>
-                           <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-primary rounded-lg">
-                             <MoreVertical className="h-4 w-4" />
-                           </Button>
-                         </DropdownMenuTrigger>
-                         <DropdownMenuContent align="end" className="p-1.5 rounded-xl border-border bg-popover shadow-2xl">
-                           <DropdownMenuItem asChild className="rounded-lg h-9 text-xs font-semibold">
-                             <Link href={`/dashboard/notes/${note.id}`} className="flex items-center gap-2">
-                               <ArrowUpRight className="h-4 w-4 text-primary" />
-                               <span>Open Fragment</span>
-                             </Link>
-                           </DropdownMenuItem>
-                           <DropdownMenuItem className="rounded-lg h-9 text-xs font-semibold text-red-400 focus:text-red-400">
-                             <DeleteNoteButton id={note.id} />
-                           </DropdownMenuItem>
-                         </DropdownMenuContent>
-                       </DropdownMenu>
+                       <div className="absolute top-4 right-4 sm:static flex items-center">
+                         <DropdownMenu>
+                           <DropdownMenuTrigger asChild>
+                             <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-primary rounded-lg -mr-2">
+                               <MoreVertical className="h-4 w-4" />
+                             </Button>
+                           </DropdownMenuTrigger>
+                           <DropdownMenuContent align="end" className="p-1.5 rounded-xl border-border bg-popover shadow-2xl">
+                             <DropdownMenuItem asChild className="rounded-lg h-9 text-xs font-semibold">
+                               <Link href={`/dashboard/notes/${note.id}`} className="flex items-center gap-2">
+                                 <ArrowUpRight className="h-4 w-4 text-primary" />
+                                 <span>Open Fragment</span>
+                               </Link>
+                             </DropdownMenuItem>
+                             <DropdownMenuItem className="rounded-lg h-9 text-xs font-semibold text-red-400 focus:text-red-400">
+                               <DeleteNoteButton id={note.id} />
+                             </DropdownMenuItem>
+                           </DropdownMenuContent>
+                         </DropdownMenu>
+                       </div>
                     </div>
                     
                     <p className="text-sm leading-relaxed text-muted-foreground line-clamp-4 font-medium opacity-80 group-hover:opacity-100 transition-opacity">
@@ -188,7 +234,7 @@ export default async function NotesPage(props: {
 
                   <div className="mt-8 flex items-center justify-between pt-4 border-t border-border/50 translate-y-2 opacity-0 group-hover:translate-y-0 group-hover:opacity-100 transition-all duration-300">
                      <div className="flex items-center gap-1">
-                        <span className="text-[9px] font-bold text-primary/40 uppercase tracking-tighter">System Log: Clean</span>
+                        <span className="text-[9px] font-bold text-primary/40 uppercase tracking-tighter">System Log: Verified</span>
                      </div>
                      <Link href={`/dashboard/notes/${note.id}`} className="text-[10px] font-bold uppercase tracking-widest text-primary hover:underline flex items-center">
                         Synthesize <ArrowUpRight className="h-3 w-3 ml-1" />
@@ -204,10 +250,10 @@ export default async function NotesPage(props: {
               </div>
               <div className="space-y-1">
                 <h3 className="text-lg font-bold text-foreground">The Scroll is Untouched</h3>
-                <p className="text-xs text-muted-foreground font-medium max-w-xs mx-auto">Inscribe your first fragment of knowledge to begin your technical legacy.</p>
+                <p className="text-xs text-muted-foreground font-medium max-w-xs mx-auto">None of your technical fragments match this classification filter.</p>
               </div>
               <Button asChild variant="outline" className="h-11 px-8 rounded-xl border-primary/20 text-primary font-bold uppercase tracking-widest text-[10px] hover:bg-primary/5">
-                <Link href="/dashboard/notes/new">Begin Inscription</Link>
+                <Link href="/dashboard/notes">Reset All Filters</Link>
               </Button>
             </div>
           )}
@@ -216,6 +262,3 @@ export default async function NotesPage(props: {
     </div>
   )
 }
-
-function Target({ className }: { className?: string }) { return <Plus className={className} /> }
-function User({ className }: { className?: string }) { return <FileText className={className} /> }
