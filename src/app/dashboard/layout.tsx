@@ -4,6 +4,7 @@ import { SidebarProvider } from "@/components/ui/sidebar"
 import { createClient } from "@/lib/supabase/server"
 import { redirect } from "next/navigation"
 import { PageTransition } from "@/components/page-transition"
+import { Shield } from "lucide-react"
 
 export default async function DashboardLayout({
   children,
@@ -16,32 +17,41 @@ export default async function DashboardLayout({
     data: { user },
   } = await supabase.auth.getUser()
 
-  // Get user profile from metadata or db ideally
-  const profile = user ? {
+  if (!user) {
+    redirect("/")
+  }
+
+  const profile = {
     name: user.user_metadata?.full_name || null,
     email: user.email || null,
     avatar_url: user.user_metadata?.avatar_url || null,
-  } : {
-    name: "Guest Explorer",
-    email: null,
-    avatar_url: null,
   }
 
   return (
     <SidebarProvider>
-      <div className="flex min-h-screen w-full bg-background relative selection:bg-primary/20">
+      <div className="flex min-h-screen w-full bg-background relative selection:bg-primary/10 overflow-hidden">
+        {/* Subtle Background Pattern for SaaS depth */}
+        <div className="absolute inset-0 bg-gradient-premium opacity-[0.03] pointer-events-none" />
+        
         <AppSidebar />
-        <div className="flex flex-1 flex-col overflow-hidden">
+        
+        <div className="flex flex-1 flex-col overflow-hidden relative">
           <TopNav user={profile} />
-          <main className="flex-1 overflow-auto p-4 md:p-8 lg:p-12 relative">
-            <div className="mx-auto max-w-7xl relative z-10">
+          
+          <main className="flex-1 overflow-auto p-4 md:p-8 lg:p-10 relative">
+            <div className="mx-auto max-w-7xl">
               <PageTransition>
                 {children}
               </PageTransition>
             </div>
-            {/* Subtle luxury watermark/background element */}
-            <div className="absolute bottom-0 right-0 p-12 opacity-[0.02] pointer-events-none select-none">
-              <span className="font-heading italic text-[20vw] leading-none">Nest</span>
+            
+            {/* Branding Indicator */}
+            <div className="absolute bottom-8 right-8 flex items-center gap-3 opacity-[0.05] pointer-events-none select-none grayscale">
+               <Shield className="w-12 h-12" />
+               <div className="flex flex-col leading-none">
+                  <span className="text-xl font-bold tracking-tighter">SANCTUARY</span>
+                  <span className="text-[8px] font-bold tracking-[0.3em] uppercase">Security Tier Alpha</span>
+               </div>
             </div>
           </main>
         </div>
