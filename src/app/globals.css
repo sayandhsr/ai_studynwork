@@ -34,84 +34,104 @@
 }
 
 :root {
-  /* PREMIUM LIGHT (Default) - Linear/Vercel Style */
-  --background: #FFFFFF;
-  --foreground: #09090B;
+  /* PREMIUM LIGHT (iOS Inspired) */
+  --background: #FDFCFB;
+  --foreground: #1C1C1E;
   --card: #FFFFFF;
-  --card-foreground: #09090B;
+  --card-foreground: #1C1C1E;
   --popover: #FFFFFF;
-  --popover-foreground: #09090B;
-  --primary: #D4AF37; /* Gold accent preserved */
+  --popover-foreground: #1C1C1E;
+  --primary: #C5A059;
   --primary-foreground: #FFFFFF;
-  --secondary: #F4F4F5;
-  --secondary-foreground: #18181B;
-  --muted: #F4F4F5;
-  --muted-foreground: #71717A;
-  --accent: #F4F4F5;
-  --accent-foreground: #18181B;
-  --destructive: #EF4444;
-  --destructive-foreground: #FAFAFA;
-  --border: #E4E4E7;
-  --input: #E4E4E7;
-  --ring: #D4AF37;
-  --radius: 0.75rem;
+  --secondary: #F2F2F7;
+  --secondary-foreground: #1C1C1E;
+  --muted: #F2F2F7;
+  --muted-foreground: #636366;
+  --accent: #F2F2F7;
+  --accent-foreground: #1C1C1E;
+  --destructive: #FF3B30;
+  --destructive-foreground: #FFFFFF;
+  --border: #F2F2F7;
+  --input: #F2F2F7;
+  --ring: #C5A059;
+  --radius: 1.5rem; /* 24px */
 }
 
 .dark {
-  /* PREMIUM DARK (Black & Gold) */
+  /* PREMIUM DARK (Midnight) */
   --background: #000000;
-  --foreground: #FAFAFA;
-  --card: #09090B;
-  --card-foreground: #FAFAFA;
-  --popover: #09090B;
-  --popover-foreground: #FAFAFA;
-  --primary: #D4AF37;
-  --primary-foreground: #000000;
-  --secondary: #27272A;
-  --secondary-foreground: #FAFAFA;
-  --muted: #27272A;
-  --muted-foreground: #A1A1AA;
-  --accent: #27272A;
-  --accent-foreground: #FAFAFA;
-  --destructive: #7F1D1D;
-  --destructive-foreground: #FAFAFA;
-  --border: #27272A;
-  --input: #27272A;
-  --ring: #D4AF37;
+  --foreground: #F2F2F7;
+  --card: #1C1C1E;
+  --card-foreground: #F2F2F7;
+  --popover: #1C1C1E;
+  --popover-foreground: #F2F2F7;
+  --primary: #C5A059;
+  --primary-foreground: #1C1C1E;
+  --secondary: #2C2C2E;
+  --secondary-foreground: #F2F2F7;
+  --muted: #2C2C2E;
+  --muted-foreground: #8E8E93;
+  --accent: #2C2C2E;
+  --accent-foreground: #F2F2F7;
+  --destructive: #FF453A;
+  --destructive-foreground: #FFFFFF;
+  --border: #2C2C2E;
+  --input: #2C2C2E;
+  --ring: #C5A059;
 }
 
 @layer base {
   * {
-    @apply border-border outline-ring/50 transition-colors duration-200;
+    @apply border-border outline-ring/50 transition-colors duration-300;
   }
   body {
     @apply bg-background text-foreground antialiased selection:bg-primary/20 selection:text-primary font-sans;
   }
 }
 
-/* Glassmorphism & SaaS Premium Utilities */
+/* iOS-Inspired Premium Utilities */
 @layer components {
+  .ios-blur {
+    @apply backdrop-blur-2xl bg-white/80 dark:bg-black/80;
+  }
+  
+  .ios-card {
+    @apply rounded-3xl border border-border bg-card text-card-foreground shadow-sm transition-all duration-300;
+  }
+
+  .ios-shadow {
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -2px rgba(0, 0, 0, 0.05), 0 0 0 1px rgba(0, 0, 0, 0.02);
+  }
+  
+  .premium-hover {
+    @apply transition-all duration-300 hover:scale-[1.01] hover:shadow-lg active:scale-[0.99];
+  }
+
+  .readable-animated-text {
+    @apply opacity-100 transition-opacity duration-500;
+  }
+  
   .glass {
     @apply bg-white/70 backdrop-blur-xl border border-white/20 dark:bg-black/40 dark:border-white/10 shadow-sm;
   }
   
   .card-premium {
-    @apply rounded-xl border border-border bg-card text-card-foreground shadow-sm hover:shadow-md transition-all duration-300 hover:-translate-y-0.5;
+    @apply rounded-[24px] border border-border bg-card text-card-foreground ios-shadow hover:shadow-xl transition-all duration-300 hover:-translate-y-1;
   }
   
   .button-primary {
-    @apply h-10 px-4 bg-primary text-primary-foreground rounded-md font-semibold hover:bg-primary/90 transition-all hover:scale-[1.02] active:scale-[0.98];
+    @apply h-12 px-6 bg-primary text-primary-foreground rounded-2xl font-semibold hover:bg-primary/90 transition-all hover:scale-[1.02] active:scale-[0.98] shadow-lg shadow-primary/20;
   }
   
   .input-premium {
-    @apply h-10 px-3 flex w-full rounded-md border border-input bg-background text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50;
+    @apply h-12 px-4 flex w-full rounded-2xl border border-input bg-background text-base ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 transition-all;
   }
 }
 
-/* Linear Gradient Backgrounds for depth */
+/* Subtle Layered Surfaces */
 .bg-gradient-premium {
   background: radial-gradient(circle at 2px 2px, var(--border) 1px, transparent 0);
-  background-size: 40px 40px;
+  background-size: 32px 32px;
 }
 
 /* Animation Utilities for Framer Motion to leverage */
