@@ -63,7 +63,7 @@ export function AppSidebar() {
   const { setOpenMobile } = useSidebar()
 
   return (
-    <Sidebar collapsible="icon" className="border-r border-border bg-background text-foreground selection:bg-primary/20 transition-all duration-300">
+    <Sidebar collapsible="icon" className="border-r border-sidebar-border bg-sidebar text-sidebar-foreground selection:bg-primary/20 transition-all duration-300">
       {/* Header */}
       <SidebarHeader className="h-24 flex items-center px-6 border-b border-border/50">
         <Link href="/dashboard" className="flex items-center gap-4 transition-all hover:opacity-80 group/logo">
@@ -102,10 +102,10 @@ export function AppSidebar() {
                       isActive={isActive}
                       tooltip={item.title}
                       onClick={() => setOpenMobile(false)}
-                      className="h-14 rounded-2xl text-sm font-semibold transition-all hover:bg-secondary/80 data-[active=true]:bg-primary/10 data-[active=true]:text-primary group/item active:scale-[0.98] premium-hover hover:translate-x-1"
+                      className="h-14 rounded-2xl text-sm font-semibold transition-all hover:bg-sidebar-accent hover:text-sidebar-accent-foreground data-[active=true]:bg-sidebar-accent data-[active=true]:text-sidebar-primary group/item active:scale-[0.98] premium-hover hover:translate-x-1"
                     >
                       <Link href={item.url} className="flex items-center gap-4 px-4">
-                        <item.icon className={`h-5 w-5 transition-all duration-300 ${isActive ? 'text-primary scale-110' : 'text-muted-foreground group-hover/item:text-foreground group-hover/item:scale-110'}`} />
+                        <item.icon className={`h-5 w-5 transition-all duration-300 ${isActive ? 'text-sidebar-primary scale-110' : 'text-sidebar-foreground/60 group-hover/item:text-sidebar-foreground group-hover/item:scale-110'}`} />
                         <span className="tracking-tight">{item.title}</span>
                       </Link>
                     </SidebarMenuButton>
@@ -121,9 +121,9 @@ export function AppSidebar() {
       <SidebarFooter className="p-6 border-t border-border/50">
         <SidebarMenu>
           <SidebarMenuItem>
-            <SidebarMenuButton asChild className="h-14 rounded-2xl hover:bg-secondary/50 group/pref active:scale-[0.98] transition-all">
+            <SidebarMenuButton asChild className="h-14 rounded-2xl hover:bg-sidebar-accent hover:text-sidebar-accent-foreground group/pref active:scale-[0.98] transition-all">
               <Link href="/dashboard/preferences" className="flex items-center w-full px-4">
-                <Settings className="h-5 w-5 mr-4 text-muted-foreground group-hover/pref:text-primary transition-colors" />
+                <Settings className="h-5 w-5 mr-4 text-sidebar-foreground/60 group-hover/pref:text-sidebar-primary transition-colors" />
                 <span className="text-sm font-semibold tracking-tight">Settings</span>
               </Link>
             </SidebarMenuButton>
