@@ -1,13 +1,11 @@
 "use client";
 
-import { createClient } from "@/lib/supabase/client";
-import { Button } from "@/components/ui/button";
 import { motion } from "framer-motion";
+import { createClient } from "@/lib/supabase/client";
+import { Cloud, Sparkles, Shield, ArrowRight, Loader2 } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import { useState } from "react";
-import { Loader2, ArrowRight } from "lucide-react";
 import { ThemeToggle } from "@/components/theme-toggle";
-
-import { BirdLogo } from "@/components/bird-logo";
 
 export default function LandingPage() {
   const [loading, setLoading] = useState(false);
@@ -28,181 +26,160 @@ export default function LandingPage() {
     }
   };
 
-  const fadeInUp = {
-    initial: { opacity: 0, y: 20 },
-    animate: { opacity: 1, y: 0 },
-    transition: { duration: 0.8 }
+  const containerVariants = {
+    hidden: { opacity: 0 },
+    visible: {
+      opacity: 1,
+      transition: {
+        staggerChildren: 0.1,
+        delayChildren: 0.2,
+      },
+    },
+  };
+
+  const itemVariants = {
+    hidden: { opacity: 0, y: 30 },
+    visible: {
+      opacity: 1,
+      y: 0,
+      transition: { duration: 0.8, ease: [0.22, 1, 0.36, 1] as any },
+    },
   };
 
   return (
-    <div className="min-h-screen bg-background text-foreground overflow-x-hidden font-sans selection:bg-primary/20">
-      {/* Navigation */}
-      <nav className="flex items-center justify-between px-6 md:px-12 py-6 max-w-7xl mx-auto ios-blur sticky top-0 z-50">
-        <div className="flex items-center gap-4">
-          <div className="w-10 h-10 md:w-12 md:h-12 relative group">
-            <div className="absolute inset-0 bg-primary/10 blur-xl group-hover:bg-primary/20 transition-all rounded-full" />
-            <BirdLogo className="w-full h-full text-primary relative transition-transform duration-500 group-hover:scale-110" />
-          </div>
-          <div className="flex flex-col leading-tight">
-            <span className="text-[10px] font-bold tracking-[0.2em] uppercase opacity-40">AI Productivity</span>
-            <span className="text-lg md:text-xl font-bold tracking-tight text-foreground">Sanctuary</span>
-          </div>
-        </div>
-        <div className="flex items-center gap-4 md:gap-8">
-          <div className="hidden sm:block">
-            <ThemeToggle />
-          </div>
-          <Button 
-            variant="ghost" 
-            className="rounded-2xl px-6 py-5 text-sm font-semibold text-foreground hover:bg-primary/5 hover:text-primary transition-all"
-            onClick={handleGoogleLogin}
-          >
-            Authenticate
-          </Button>
-        </div>
-      </nav>
+    <div className="relative min-h-screen w-full bg-[#FDFCFB] dark:bg-black overflow-hidden flex flex-col md:flex-row font-sans">
+      {/* Cinematic Depth Layers */}
+      <div className="fixed inset-0 grain-overlay z-[50]" />
+      <div className="fixed inset-0 vignette-effect z-[40]" />
+      
+      {/* Animated Background Depth */}
+      <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-primary/5 rounded-full blur-[120px] animate-pulse" />
+      <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-primary/5 rounded-full blur-[120px] animate-pulse [animation-delay:2s]" />
 
-      {/* Hero Section */}
-      <section className="max-w-5xl mx-auto px-6 pt-24 md:pt-32 pb-32 text-center space-y-16">
+      {/* Theme Toggle Floating */}
+      <div className="absolute top-8 right-8 z-[100]">
+        <ThemeToggle />
+      </div>
+
+      {/* LEFT SIDE: Cinematic Branding */}
+      <div className="flex-1 flex flex-col justify-center p-12 md:p-24 lg:p-32 relative z-10">
         <motion.div 
-          className="space-y-10"
-          initial="initial"
-          animate="animate"
-          variants={fadeInUp}
+          initial="hidden"
+          animate="visible"
+          variants={containerVariants}
+          className="space-y-10 max-w-2xl"
         >
-          <div className="flex justify-center items-center gap-3 mb-2">
-             <div className="h-[1px] w-8 md:w-16 bg-primary/20" />
-             <span className="text-[10px] font-bold tracking-[0.3em] uppercase text-primary/60">Crafted for Clarity</span>
-             <div className="h-[1px] w-8 md:w-16 bg-primary/20" />
-          </div>
-          
-          <h1 className="text-6xl md:text-8xl font-black tracking-tighter leading-[0.95] text-foreground">
-            Elevate Your <br />
-            <span className="text-primary">Intelligence.</span>
-          </h1>
-          
-          <div className="max-w-2xl mx-auto space-y-10">
-            <p className="text-lg md:text-xl text-muted-foreground leading-relaxed font-medium">
-              A premium space for notes, research, and video intelligence. <br/>
-              Where deep focus meets powerful AI.
+          <motion.div variants={itemVariants} className="flex items-center gap-4">
+            <div className="h-14 w-14 bg-primary rounded-2xl flex items-center justify-center text-primary-foreground shadow-2xl shadow-primary/20 scale-110">
+              <Cloud className="w-7 h-7" />
+            </div>
+            <div className="h-[1px] w-12 bg-primary/30" />
+            <span className="text-[10px] font-bold tracking-[0.4em] uppercase text-primary/60">Node Sanctuary 1.0</span>
+          </motion.div>
+
+          <motion.div variants={itemVariants} className="space-y-6">
+            <h1 className="text-6xl md:text-8xl font-black tracking-tighter text-foreground leading-[0.85]">
+              Unified <br/>
+              <span className="text-primary italic relative">
+                Intelligence.
+                <motion.span 
+                  initial={{ width: 0 }}
+                  animate={{ width: "100%" }}
+                  transition={{ delay: 1.5, duration: 1.2, ease: "circOut" }}
+                  className="absolute bottom-4 left-0 h-2 bg-primary/10 -z-10"
+                />
+              </span>
+            </h1>
+            <p className="text-xl text-muted-foreground font-medium max-w-lg leading-relaxed opacity-80">
+              The premium command center for technical synthesis, persistent research, and career trajectory management.
             </p>
-            <div className="flex justify-center pt-4">
+          </motion.div>
+
+          <motion.div variants={itemVariants} className="flex flex-wrap gap-8 items-center pt-8">
+            <div className="flex -space-x-3">
+              {[1, 2, 3, 4].map((i) => (
+                <div key={i} className="h-10 w-10 rounded-full border-2 border-background bg-secondary flex items-center justify-center overflow-hidden ios-shadow">
+                  <div className="h-full w-full bg-gradient-to-br from-primary/20 to-primary/5 capitalize font-black text-[10px] flex items-center justify-center">S</div>
+                </div>
+              ))}
+            </div>
+            <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-muted-foreground">
+              Trusted by <span className="text-foreground">2,400+</span> Engineers
+            </p>
+          </motion.div>
+        </motion.div>
+      </div>
+
+      {/* RIGHT SIDE: Glassmorphism Login */}
+      <div className="flex-1 flex items-center justify-center p-8 md:p-24 relative z-10">
+        <motion.div 
+          initial={{ opacity: 0, scale: 0.9 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{ duration: 1, ease: [0.22, 1, 0.36, 1] as any, delay: 0.4 }}
+          className="w-full max-w-md"
+        >
+          <div className="glass p-12 rounded-[48px] space-y-10 relative overflow-hidden backdrop-blur-3xl shadow-2xl border border-white/20">
+            <div className="space-y-3 relative z-10 text-center">
+              <h2 className="text-3xl font-black tracking-tight text-foreground">Access Protocol</h2>
+              <p className="text-xs font-bold text-muted-foreground uppercase tracking-[0.2em] opacity-60">Authorize Terminal Identity</p>
+            </div>
+
+            <div className="space-y-6 relative z-10">
               <Button 
-                size="lg" 
-                className="h-16 px-12 md:px-16 rounded-[24px] text-base font-bold bg-primary hover:bg-primary/90 text-primary-foreground transition-all duration-300 shadow-2xl shadow-primary/20 premium-hover group"
-                onClick={handleGoogleLogin}
+                onClick={handleGoogleLogin} 
                 disabled={loading}
+                className="w-full h-16 bg-primary hover:bg-primary/90 text-primary-foreground rounded-[24px] font-bold text-sm tracking-tight transition-all premium-hover flex items-center justify-center gap-4 group"
               >
-                {loading ? <Loader2 className="animate-spin" /> : (
-                  <span className="flex items-center gap-3">
-                    Enter the Sanctuary
-                    <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
-                  </span>
+                {loading ? <Loader2 className="h-5 w-5 animate-spin" /> : (
+                  <>
+                    <Cloud className="w-5 h-5 group-hover:scale-110 transition-transform" />
+                    <span>Initialize with Google Cloud</span>
+                    <ArrowRight className="w-4 h-4 opacity-0 group-hover:opacity-100 group-hover:translate-x-1 transition-all" />
+                  </>
                 )}
               </Button>
+              
+              <div className="relative">
+                <div className="absolute inset-0 flex items-center"><div className="w-full border-t border-foreground/5"></div></div>
+                <div className="relative flex justify-center text-[8px] uppercase tracking-[0.5em] font-bold text-muted-foreground/40 bg-transparent px-4">
+                  Secured Access Only
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <Button variant="ghost" className="h-14 rounded-2xl border border-border/40 hover:bg-secondary/40 text-[10px] font-bold uppercase tracking-widest text-muted-foreground transition-all premium-hover">
+                   Legacy Auth
+                </Button>
+                <Button variant="ghost" className="h-14 rounded-2xl border border-border/40 hover:bg-secondary/40 text-[10px] font-bold uppercase tracking-widest text-muted-foreground transition-all premium-hover">
+                   Key Inquiry
+                </Button>
+              </div>
             </div>
-          </div>
-        </motion.div>
 
-        <motion.div 
-          className="relative mt-20"
-          initial={{ opacity: 0, y: 30 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 1.2, delay: 0.2 }}
-        >
-          <div className="absolute -inset-20 bg-primary/5 blur-[100px] rounded-full pointer-events-none" />
-          <div className="relative overflow-hidden rounded-[32px] ios-shadow border border-border bg-card p-2">
-            <div className="overflow-hidden rounded-[24px]">
-              <img 
-                src="/images/human_hero.png" 
-                alt="Productivity Dashboard" 
-                className="w-full h-auto opacity-95 hover:opacity-100 transition-opacity duration-700"
-              />
+            <div className="pt-6 text-center relative z-10">
+               <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/5 border border-primary/10">
+                 <Shield className="w-3 h-3 text-primary" />
+                 <span className="text-[8px] font-bold uppercase tracking-widest text-primary/80">AES-256 Encryption Active</span>
+               </div>
             </div>
+
+            {/* Subtle Gradient Background inside card */}
+            <div className="absolute -top-24 -right-24 w-48 h-48 bg-primary/10 rounded-full blur-3xl opacity-50" />
           </div>
+
+          <motion.p 
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 0.4 }}
+            transition={{ delay: 2, duration: 1 }}
+            className="text-center mt-12 text-[10px] font-bold uppercase tracking-[0.3em] text-muted-foreground"
+          >
+            © 2026 Sanctuary Neural Systems. All Rights Reserved.
+          </motion.p>
         </motion.div>
-      </section>
+      </div>
 
-      {/* Features Grid */}
-      <section className="bg-secondary/30 py-32 md:py-40 border-y border-border">
-        <div className="max-w-7xl mx-auto px-6">
-          <div className="text-center mb-24 md:mb-32 space-y-4">
-            <h2 className="text-[10px] font-bold tracking-[0.4em] uppercase text-primary">The Architecture</h2>
-            <h3 className="text-4xl md:text-6xl font-bold tracking-tight text-foreground">Optimized for depth.</h3>
-          </div>
-
-          <div className="grid lg:grid-cols-2 gap-12 md:gap-20">
-            {/* Feature 1 */}
-            <motion.div 
-              className="group space-y-8"
-              whileInView={{ opacity: 1, y: 0 }}
-              initial={{ opacity: 0, y: 20 }}
-              viewport={{ once: true }}
-            >
-              <div className="relative aspect-video overflow-hidden rounded-[28px] ios-shadow border border-border bg-card p-2 group-hover:border-primary/20 transition-all duration-500">
-                <div className="w-full h-full overflow-hidden rounded-[20px]">
-                  <img src="/images/human_yt.png" alt="Intelligence" className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105" />
-                </div>
-              </div>
-              <div className="space-y-4 px-2">
-                 <div className="space-y-1">
-                    <span className="text-[10px] font-bold tracking-widest uppercase text-primary/60">Video Intelligence</span>
-                    <h4 className="text-2xl md:text-3xl font-bold tracking-tight text-foreground">Visual Scribe</h4>
-                 </div>
-                 <p className="text-base md:text-lg text-muted-foreground leading-relaxed font-medium">
-                   Distill hours of video into structured intelligence. Capture every detail without losing focus on the flow.
-                 </p>
-                 <div className="h-[2px] w-12 bg-primary/20" />
-              </div>
-            </motion.div>
- 
-            {/* Feature 2 */}
-            <motion.div 
-              className="group space-y-8 lg:mt-32"
-              whileInView={{ opacity: 1, y: 0 }}
-              initial={{ opacity: 0, y: 20 }}
-              viewport={{ once: true }}
-            >
-              <div className="relative aspect-video overflow-hidden rounded-[28px] ios-shadow border border-border bg-card p-2 group-hover:border-primary/20 transition-all duration-500">
-                <div className="w-full h-full overflow-hidden rounded-[20px]">
-                  <img src="/images/human_hero.png" alt="Knowledge" className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105" />
-                </div>
-              </div>
-              <div className="space-y-4 px-2">
-                <div className="space-y-1">
-                   <span className="text-[10px] font-bold tracking-widest uppercase text-primary/60">Strategic Archive</span>
-                   <h4 className="text-2xl md:text-3xl font-bold tracking-tight text-foreground">Observation Vault</h4>
-                </div>
-                <p className="text-base md:text-lg text-muted-foreground leading-relaxed font-medium">
-                  A premium sanctuary for your observations. Organized, searchable, and always accessible for your growth.
-                </p>
-                <div className="h-[2px] w-12 bg-primary/20" />
-              </div>
-            </motion.div>
-          </div>
-        </div>
-      </section>
-
-      {/* Footer */}
-      <footer className="max-w-7xl mx-auto px-6 py-24 text-center space-y-16">
-        <div className="flex justify-center items-center gap-4 opacity-20">
-           <div className="h-[1px] w-12 md:w-24 bg-foreground" />
-           <BirdLogo className="w-8 h-8" />
-           <div className="h-[1px] w-12 md:w-24 bg-foreground" />
-        </div>
-        
-        <div className="flex flex-wrap justify-center gap-8 md:gap-16 text-[10px] font-bold tracking-[0.2em] uppercase text-muted-foreground">
-          <a href="#" className="hover:text-primary transition-colors">Manifesto</a>
-          <a href="#" className="hover:text-primary transition-colors">Architecture</a>
-          <a href="#" className="hover:text-primary transition-colors">Origins</a>
-          <a href="#" className="hover:text-primary transition-colors">Support</a>
-        </div>
-
-        <div className="pt-10 text-[10px] tracking-[0.2em] uppercase text-muted-foreground/40 font-bold max-w-2xl mx-auto leading-relaxed">
-          <span>&copy; 2026 SANCTUARY. DESIGNED FOR PERFORMANCE. ALL RIGHTS RESERVED.</span>
-        </div>
-      </footer>
-
+      {/* Subtle Foreground Grain */}
+      <div className="fixed inset-0 pointer-events-none z-[200] opacity-[0.02] grain-overlay" />
     </div>
   );
 }

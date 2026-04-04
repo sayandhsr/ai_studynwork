@@ -55,6 +55,8 @@
   --input: #F2F2F7;
   --ring: #C5A059;
   --radius: 1.5rem; /* 24px */
+  --duration-premium: 0.4s;
+  --ease-premium: cubic-bezier(0.22, 1, 0.36, 1);
 }
 
 .dark {
@@ -92,39 +94,49 @@
 /* iOS-Inspired Premium Utilities */
 @layer components {
   .ios-blur {
-    @apply backdrop-blur-2xl bg-white/80 dark:bg-black/80;
+    @apply backdrop-blur-2xl bg-white/60 dark:bg-black/60;
   }
   
   .ios-card {
-    @apply rounded-3xl border border-border bg-card text-card-foreground shadow-sm transition-all duration-300;
+    @apply rounded-3xl border border-border/40 bg-card/60 backdrop-blur-md text-card-foreground transition-all;
+    transition-duration: var(--duration-premium);
+    transition-timing-function: var(--ease-premium);
+    box-shadow: 
+      0 4px 6px -1px rgba(0, 0, 0, 0.02),
+      0 2px 4px -1px rgba(0, 0, 0, 0.01),
+      inset 0 0 0 1px rgba(255, 255, 255, 0.1);
+  }
+
+  .ios-card:hover {
+    @apply border-primary/20 scale-[1.01] -translate-y-1;
+    box-shadow: 
+      0 25px 50px -12px rgba(0, 0, 0, 0.08),
+      0 0 15px rgba(197, 160, 89, 0.05);
   }
 
   .ios-shadow {
-    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -2px rgba(0, 0, 0, 0.05), 0 0 0 1px rgba(0, 0, 0, 0.02);
+    box-shadow: 0 10px 30px -10px rgba(0, 0, 0, 0.08);
   }
   
   .premium-hover {
-    @apply transition-all duration-300 hover:scale-[1.01] hover:shadow-lg active:scale-[0.99];
+    @apply transition-all active:scale-95;
+    transition-duration: var(--duration-premium);
+    transition-timing-function: var(--ease-premium);
   }
 
-  .readable-animated-text {
-    @apply opacity-100 transition-opacity duration-500;
+  .grain-overlay {
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E");
+    opacity: 0.02;
+    pointer-events: none;
   }
-  
+
+  .vignette-effect {
+    background: radial-gradient(circle, transparent 40%, rgba(0, 0, 0, 0.03) 100%);
+    pointer-events: none;
+  }
+
   .glass {
-    @apply bg-white/70 backdrop-blur-xl border border-white/20 dark:bg-black/40 dark:border-white/10 shadow-sm;
-  }
-  
-  .card-premium {
-    @apply rounded-[24px] border border-border bg-card text-card-foreground ios-shadow hover:shadow-xl transition-all duration-300 hover:-translate-y-1;
-  }
-  
-  .button-primary {
-    @apply h-12 px-6 bg-primary text-primary-foreground rounded-2xl font-semibold hover:bg-primary/90 transition-all hover:scale-[1.02] active:scale-[0.98] shadow-lg shadow-primary/20;
-  }
-  
-  .input-premium {
-    @apply h-12 px-4 flex w-full rounded-2xl border border-input bg-background text-base ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 transition-all;
+    @apply bg-white/40 backdrop-blur-3xl border border-white/20 dark:bg-black/40 dark:border-white/10 shadow-xl;
   }
 }
 
@@ -134,8 +146,8 @@
   background-size: 32px 32px;
 }
 
-/* Animation Utilities for Framer Motion to leverage */
+/* Animation Utilities */
 .animate-shimmer {
-  background: linear-gradient(90deg, transparent, rgba(212, 175, 55, 0.05), transparent);
+  background: linear-gradient(90deg, transparent, rgba(197, 160, 89, 0.05), transparent);
   background-size: 200% 100%;
 }

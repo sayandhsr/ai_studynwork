@@ -30,7 +30,9 @@ export default async function DashboardLayout({
   return (
     <SidebarProvider>
       <div className="flex min-h-screen w-full bg-background relative selection:bg-primary/10 overflow-hidden font-sans">
-        {/* Subtle Background Pattern */}
+        {/* Cinematic Depth Layers */}
+        <div className="fixed inset-0 grain-overlay z-[100]" />
+        <div className="fixed inset-0 vignette-effect z-[90]" />
         <div className="absolute inset-0 bg-gradient-premium opacity-[0.4] pointer-events-none" />
         
         <AppSidebar />
@@ -38,7 +40,7 @@ export default async function DashboardLayout({
         <div className="flex flex-1 flex-col overflow-hidden relative">
           <TopNav user={profile} />
           
-          <main className="flex-1 overflow-auto p-6 md:p-10 lg:p-14 relative scroll-smooth">
+          <main className="flex-1 overflow-auto p-6 md:p-12 lg:p-20 relative scroll-smooth">
             <div className="mx-auto max-w-7xl">
               <PageTransition>
                 {children}

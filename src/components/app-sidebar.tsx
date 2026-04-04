@@ -102,10 +102,10 @@ export function AppSidebar() {
                       isActive={isActive}
                       tooltip={item.title}
                       onClick={() => setOpenMobile(false)}
-                      className="h-14 rounded-2xl text-sm font-semibold transition-all hover:bg-secondary/50 data-[active=true]:bg-primary/10 data-[active=true]:text-primary group/item active:scale-[0.98]"
+                      className="h-14 rounded-2xl text-sm font-semibold transition-all hover:bg-secondary/80 data-[active=true]:bg-primary/10 data-[active=true]:text-primary group/item active:scale-[0.98] premium-hover hover:translate-x-1"
                     >
                       <Link href={item.url} className="flex items-center gap-4 px-4">
-                        <item.icon className={`h-5 w-5 transition-colors ${isActive ? 'text-primary' : 'text-muted-foreground group-hover/item:text-foreground'}`} />
+                        <item.icon className={`h-5 w-5 transition-all duration-300 ${isActive ? 'text-primary scale-110' : 'text-muted-foreground group-hover/item:text-foreground group-hover/item:scale-110'}`} />
                         <span className="tracking-tight">{item.title}</span>
                       </Link>
                     </SidebarMenuButton>
