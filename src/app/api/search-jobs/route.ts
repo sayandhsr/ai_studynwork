@@ -9,13 +9,13 @@ export async function POST(req: Request) {
     }
 
     const firecrawlKey = process.env.FIRECRAWL_API_KEY
-    const groqKey = process.env.GROQ_API_KEY
+    const geminiKey = process.env.GEMINI_API_KEY
     const rapidApiKey = process.env.RAPIDAPI_KEY
 
     const searchQuery = `${role} jobs ${location || "remote"} ${experience || ""}`.trim()
 
-    // ── PRIMARY: Firecrawl + Groq pipeline for real, high-quality job data ──
-    if (firecrawlKey && groqKey) {
+    // ── PRIMARY: Firecrawl + Gemini pipeline for real, high-quality job data ──
+    if (firecrawlKey && geminiKey) {
       try {
         // Step 1: Search the web for real job listings
         const fcResponse = await fetch("https://api.firecrawl.dev/v1/search", {
@@ -25,8 +25,8 @@ export async function POST(req: Request) {
             "Authorization": `Bearer ${firecrawlKey}`,
           },
           body: JSON.stringify({
-            query: `${searchQuery} hiring apply now site:linkedin.com OR site:indeed.com OR site:glassdoor.com OR site:wellfound.com`,
-            limit: 10,
+            query: `${searchQuery} hiring apply now site:linkedin.com OR site:indeed.com OR site:internshala.com OR site:glassdoor.com OR site:wellfound.com`,
+            limit: 8,
           }),
         })
 
@@ -35,69 +35,67 @@ export async function POST(req: Request) {
           const results = fcData.data || []
 
           if (results.length > 0) {
-            // Step 2: Use Groq to parse raw web data into structured job listings
+            // Step 2: Use Gemini to parse raw web data into structured job listings
             const webContent = results
               .map((r: any, i: number) => {
                 const title = r.title || r.metadata?.title || ""
                 const url = r.url || r.metadata?.sourceURL || ""
-                const text = (r.markdown || r.content || r.extract || "").substring(0, 800)
+                // Increase character limit to 5000 to ensure we capture the apply link and context
+                const text = (r.markdown || r.content || r.extract || "").substring(0, 5000)
                 return `[Source ${i + 1}]\nTitle: ${title}\nURL: ${url}\nContent: ${text}`
               })
               .join("\n---\n")
 
-            const groqRes = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+            const systemPrompt = `You are an elite job discovery engine. Extract REAL, current job listings from the provided web data.
+            
+            Return ONLY a valid JSON array. Each object MUST have:
+            - "job_title": Full official job title
+            - "company": Company name
+            - "location": Location or "Remote"
+            - "apply_link": The most direct URL to the job opening
+            - "source": Platform name (LinkedIn, Internshala, Indeed, etc.)
+
+            Rules:
+            1. ONLY include actual job postings. Skip articles or general sites.
+            2. For Internshala, prioritize results that look like 'internshala.com/job/detail/'.
+            3. Accuracy is critical. If a link doesn't look like a job detail page, skip it.
+            4. Return ONLY the JSON array, no markdown wrappers.`
+
+            const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${geminiKey}`
+            const geminiRes = await fetch(geminiUrl, {
               method: "POST",
-              headers: {
-                "Content-Type": "application/json",
-                "Authorization": `Bearer ${groqKey}`,
-              },
+              headers: { "Content-Type": "application/json" },
               body: JSON.stringify({
-                model: "llama-3.3-70b-versatile",
-                messages: [
-                  {
-                    role: "system",
-                    content: `You are a job listing parser. Extract real job listings from the provided web search results.
-
-Return ONLY valid JSON array. Each job must have:
-- "job_title": the actual job title (string)
-- "company": the company name (string)
-- "location": the job location (string)
-- "apply_link": the URL to apply (string)
-- "source": the website source like "LinkedIn", "Indeed", etc. (string)
-
-Rules:
-- Only include REAL job postings, not articles or guides
-- If you cannot find at least 2 real jobs, return an empty array []
-- Do not invent or fabricate any listings
-- Return ONLY the JSON array, no markdown, no explanation`
-                  },
-                  {
-                    role: "user",
-                    content: `Search query: "${searchQuery}"\n\nWeb results:\n${webContent}`
-                  },
-                ],
-                temperature: 0.1,
-                max_tokens: 2000,
-              }),
+                contents: [{ 
+                  role: "user", 
+                  parts: [{ text: `${systemPrompt}\n\nSearch Query: ${searchQuery}\n\nWeb Data:\n${webContent}` }] 
+                }],
+                generationConfig: {
+                    temperature: 0.1,
+                    topP: 0.95,
+                    maxOutputTokens: 4096,
+                }
+              })
             })
 
-            if (groqRes.ok) {
-              const groqData = await groqRes.json()
-              const raw = groqData.choices?.[0]?.message?.content || "[]"
-              const jobs = parseJSONArray(raw)
+            if (geminiRes.ok) {
+              const geminiData = await geminiRes.json()
+              const rawText = geminiData.candidates?.[0]?.content?.parts?.[0]?.text || "[]"
+              const cleanText = rawText.replace(/```json/g, "").replace(/```/g, "").trim()
+              const jobs = parseJSONArray(cleanText)
 
               if (jobs.length > 0) {
                 return NextResponse.json({
                   jobs,
-                  source: "firecrawl_groq",
-                  note: `${jobs.length} real listings found via web intelligence.`,
+                  source: "firecrawl_gemini",
+                  note: `${jobs.length} tactical opportunities discovered via Intelligence Engine.`,
                 })
               }
             }
           }
         }
       } catch (fcErr) {
-        console.error("Firecrawl+Groq pipeline error:", fcErr)
+        console.error("Firecrawl+Gemini pipeline error:", fcErr)
       }
     }
 
@@ -170,7 +168,7 @@ Rules:
       { job_title: `${role} - Remote`, company: "Open Position", location: location || "Remote", apply_link: `https://www.google.com/search?q=${encodeURIComponent(searchQuery + " jobs apply")}`, source: "Suggested" },
       { job_title: `Senior ${role}`, company: "Multiple Companies", location: location || "Remote", apply_link: `https://www.linkedin.com/jobs/search/?keywords=${encodeURIComponent(role)}`, source: "LinkedIn Search" },
       { job_title: `${role} Specialist`, company: "Various Employers", location: "Remote / Hybrid", apply_link: `https://www.indeed.com/jobs?q=${encodeURIComponent(role)}&l=${encodeURIComponent(location || "")}`, source: "Indeed Search" },
-      { job_title: `Junior ${role}`, company: "Entry Level", location: location || "Worldwide", apply_link: `https://wellfound.com/role/${encodeURIComponent(role.toLowerCase().replace(/\s+/g, "-"))}`, source: "Wellfound" },
+      { job_title: `${role} Graduate/Intern`, company: "Targeted Platforms", location: location || "India / Remote", apply_link: `https://internshala.com/jobs/keywords-${encodeURIComponent(role.toLowerCase().replace(/\s+/g, "%20"))}`, source: "Internshala Search" },
     ]
 
     return NextResponse.json({

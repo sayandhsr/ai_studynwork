@@ -172,7 +172,7 @@ export function JobSearchForm() {
                 className="h-12 px-8 bg-primary hover:bg-primary/90 text-primary-foreground font-bold uppercase text-xs tracking-widest flex-1 rounded-xl shadow-lg shadow-primary/10 transition-all hover:scale-[1.01] active:scale-[0.99]"
               >
                 {loading ? <Loader2 className="h-4 w-4 animate-spin mr-3" /> : <Search className="h-4 w-4 mr-3" />}
-                {loading ? "Discovering..." : "Execute Discovery"}
+                {loading ? "Discovering..." : "Tactical Search"}
              </Button>
              
              <Button type="button" variant="outline" className="h-12 px-6 rounded-xl border-border text-muted-foreground hover:bg-accent/50">
@@ -274,7 +274,7 @@ export function JobSearchForm() {
                       asChild
                     >
                       <a href={job.apply_link} target="_blank" rel="noreferrer">
-                        Deploy <ExternalLink className="h-3.5 w-3.5 ml-2" />
+                        Apply Now <ExternalLink className="h-3.5 w-3.5 ml-2" />
                       </a>
                     </Button>
                   </div>
